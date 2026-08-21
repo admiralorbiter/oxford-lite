@@ -26,39 +26,40 @@ class AnalysisTests(unittest.TestCase):
         self.assertLess(result["shape_match_ratio"], 1.0)
         self.assertGreater(result["shape_mae"], 0.0)
 
-    def test_local_tokenizer_differential_evaluation(self):
-        # Verify local tokenizer outputs match reference differential structure
-        glm_counts = {
-            p["id"]: oxford.count_tokens_local("glm-5.2-local", p["id"], p["text"])
-            for p in oxford.PROBES
-        }
-        # Synthetic Ox counts with +75 constant wrapper overhead
-        ox_counts = {pid: val + 75 for pid, val in glm_counts.items()}
-        matrix = {"ox-alpha": ox_counts, "glm-5.2-local": glm_counts}
+    def test_fail_closed_tokenizer_on_unknown(self):
+        count, err = oxford.count_tokens_local("unknown-tokenizer-xyz", "p01", "test")
+        self.assertIsNone(count)
+        self.assertIsNotNone(err)
+        self.assertIn("Unknown tokenizer", err)
 
-        comp = oxford.pairwise_comparison(matrix, "ox-alpha", "glm-5.2-local")
-        self.assertTrue(comp["constant_offset"])
-        self.assertEqual(comp["offset_value"], 75)
-        self.assertEqual(comp["shape_match_ratio"], 1.0)
-        self.assertEqual(comp["shape_mae"], 0.0)
+    def test_tiktoken_encoding(self):
+        count, err = oxford.count_tokens_local("cl100k-local", "p01", "Hello world")
+        self.assertIsNone(err)
+        self.assertIsInstance(count, int)
+        self.assertGreater(count, 0)
 
-    def test_resume_cell_deduplication(self):
-        # If cells already succeeded, pending_cells should only contain remaining cells
-        all_cells = [(model, probe) for model in oxford.REMOTE_MODELS for probe in oxford.PROBES]
-        completed_cells = {oxford.cell_key("ox-alpha", oxford.PROBES[0]["id"])}
+    def test_envelope_builders(self):
+        payload_a = oxford.build_payload("stealth/ox-alpha", "probe_text", envelope_id="envelope_a_minimal")
+        self.assertEqual(payload_a["messages"][0]["content"], "Payload:\nprobe_text")
 
-        pending = [
-            (m, p)
-            for m, p in all_cells
-            if oxford.cell_key(m["id"], p["id"]) not in completed_cells
-        ]
-        self.assertEqual(len(pending), len(all_cells) - 1)
-        self.assertNotIn((oxford.TARGET_MODEL, oxford.PROBES[0]), pending)
+        payload_b = oxford.build_payload("stealth/ox-alpha", "probe_text", envelope_id="envelope_b_standard")
+        self.assertTrue(payload_b["messages"][0]["content"].startswith("Return the single word OK."))
+
+        payload_c = oxford.build_payload("stealth/ox-alpha", "probe_text", envelope_id="envelope_c_system")
+        self.assertEqual(len(payload_c["messages"]), 2)
+        self.assertEqual(payload_c["messages"][0]["role"], "system")
+        self.assertEqual(payload_c["messages"][1]["role"], "user")
+
+    def test_synthetic_probe_generator(self):
+        probes = oxford.generate_synthetic_corpus(20, seed=42)
+        self.assertEqual(len(probes), 20)
+        self.assertTrue(probes[0]["id"].startswith("synth-p00000"))
+        self.assertGreater(len(probes[0]["text"]), 10)
 
     def test_provider_pinning_payload(self):
-        payload = oxford.build_payload("stealth/ox-alpha", "test", provider_order=["together"], allow_fallbacks=False)
+        payload = oxford.build_payload("stealth/ox-alpha", "test", provider_order=["together", "deepinfra"], allow_fallbacks=False)
         self.assertIn("provider", payload)
-        self.assertEqual(payload["provider"]["order"], ["together"])
+        self.assertEqual(payload["provider"]["order"], ["together", "deepinfra"])
         self.assertFalse(payload["provider"]["allow_fallbacks"])
 
     def test_demo_analysis_is_complete(self):

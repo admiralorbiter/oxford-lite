@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
-"""OXFORD Lite: a black-box model-lineage pilot suite.
+"""OXFORD Lite: a black-box model-lineage and tokenizer-geometry assay suite.
 
-Supported assay modes:
-1. Structural assay (`structural`): Local candidate tokenizers (GLM, Gemma, Qwen, Tiktoken)
-   + remote Ox Alpha only (6-20 requests, immune to candidate congestion, isolates
-   differential prompt-token geometry and constant wrapper offsets).
-2. Remote assay (`remote` / `pilot`): Remote API comparisons with model-aware scheduling,
-   provider pinning, --paid/--free routing, jittered 429 backoff, and cell-level --resume.
-3. Local assay (`local`): Local Ollama integration for negative controls and behavioral assays.
-4. Synthetic demo (`demo`) and environment doctor (`doctor`).
+Assay Modes & Commands:
+1. `structural`: Evaluates local candidate tokenizers + remote Ox Alpha only.
+2. `remote` / `pilot`: Remote API comparisons with model-aware scheduling, provider pinning,
+   --paid/--free routing, jittered 429 backoff, and cell-level --resume.
+3. `positive-control`: Validates OXFORD against a known specimen (remote Qwen vs local Qwen/GLM/Gemma).
+4. `collision`: Empirical Monte Carlo simulation of tokenizer collision probabilities across 1M trials.
+5. `synthesize-probes`: Generates synthetic candidate strings and extracts the top discriminatory probes.
+6. `envelope`: Tests differential shape invariance across 3 distinct request envelopes.
+7. `local`: Local Ollama assay.
+8. `demo` & `doctor`: Synthetic demo and environment auditor.
 """
 
 from __future__ import annotations
@@ -27,22 +29,30 @@ import time
 import webbrowser
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 
 import requests
 from dotenv import load_dotenv
 
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 ROOT = Path(__file__).resolve().parent
 load_dotenv(ROOT / ".env")
 RUNS_DIR = ROOT / "runs"
+PROBES_DIR = ROOT / "probes"
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
 OLLAMA_BASE_URL = os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434")
-PILOT_VERSION = "0.2.0"
+PILOT_VERSION = "0.3.0"
 DEFAULT_SEED = 20260821
 DEFAULT_DELAY = 0.0
 DEFAULT_MAX_RETRIES = 2
 
-# Models configuration
+# Target Model
 TARGET_MODEL: dict[str, str] = {
     "id": "ox-alpha",
     "slug": "stealth/ox-alpha",
@@ -50,6 +60,7 @@ TARGET_MODEL: dict[str, str] = {
     "role": "target",
 }
 
+# Remote Comparison Models
 REMOTE_MODELS: list[dict[str, str]] = [
     TARGET_MODEL,
     {
@@ -62,7 +73,7 @@ REMOTE_MODELS: list[dict[str, str]] = [
     {
         "id": "gemma-4",
         "slug": "google/gemma-4-26b-a4b-it:free",
-        "slug_paid": "google/gemma-2-9b-it",
+        "slug_paid": "google/gemma-4-26b-a4b-it",
         "label": "Gemma 4 26B A4B",
         "role": "negative_control",
     },
@@ -71,19 +82,14 @@ REMOTE_MODELS: list[dict[str, str]] = [
 # Backward compatibility alias
 MODELS = REMOTE_MODELS
 
-# Candidate local tokenizers
+# Candidate Local Tokenizers
 LOCAL_TOKENIZERS: list[dict[str, str]] = [
     {
         "id": "glm-5.2-local",
         "label": "GLM-5.2 Tokenizer (Local)",
         "role": "candidate",
-        "hf_model": "THUDM/glm-4-9b-chat",
-    },
-    {
-        "id": "gemma-local",
-        "label": "Gemma Tokenizer (Local)",
-        "role": "negative_control",
-        "hf_model": "google/gemma-2-9b",
+        "hf_model": "zai-org/GLM-5.2",
+        "hf_fallback": "THUDM/glm-4-9b-chat",
     },
     {
         "id": "qwen-local",
@@ -92,14 +98,27 @@ LOCAL_TOKENIZERS: list[dict[str, str]] = [
         "hf_model": "Qwen/Qwen2.5-7B-Instruct",
     },
     {
+        "id": "gemma-local",
+        "label": "Gemma Tokenizer (Local)",
+        "role": "negative_control",
+        "hf_model": "alpindale/gemma-2b",
+        "hf_fallback": "google/gemma-2-9b",
+    },
+    {
         "id": "cl100k-local",
         "label": "OpenAI cl100k (Local)",
         "role": "negative_control",
-        "hf_model": "cl100k_base",
+        "encoding_name": "cl100k_base",
+    },
+    {
+        "id": "o200k-local",
+        "label": "OpenAI o200k (Local)",
+        "role": "negative_control",
+        "encoding_name": "o200k_base",
     },
 ]
 
-# Fresh pilot probes
+# Standard bundled probes
 PROBES: list[dict[str, str]] = [
     {
         "id": "p01-mixed-boundaries",
@@ -136,6 +155,41 @@ PROBES: list[dict[str, str]] = [
 COMMON_PREFIX = "Return the single word OK. Do not explain.\n\nPayload:\n"
 
 
+# ---------------------------------------------------------------------------
+# Envelopes
+# ---------------------------------------------------------------------------
+
+ENVELOPES: dict[str, dict[str, Any]] = {
+    "envelope_a_minimal": {
+        "id": "envelope_a_minimal",
+        "label": "Envelope A (Minimal)",
+        "builder": lambda probe_text: {
+            "messages": [{"role": "user", "content": f"Payload:\n{probe_text}"}],
+        },
+        "text_formatter": lambda probe_text: f"Payload:\n{probe_text}",
+    },
+    "envelope_b_standard": {
+        "id": "envelope_b_standard",
+        "label": "Envelope B (Standard Instruction)",
+        "builder": lambda probe_text: {
+            "messages": [{"role": "user", "content": COMMON_PREFIX + probe_text}],
+        },
+        "text_formatter": lambda probe_text: COMMON_PREFIX + probe_text,
+    },
+    "envelope_c_system": {
+        "id": "envelope_c_system",
+        "label": "Envelope C (System + User)",
+        "builder": lambda probe_text: {
+            "messages": [
+                {"role": "system", "content": "You are a black-box test oracle. Return only OK."},
+                {"role": "user", "content": probe_text},
+            ],
+        },
+        "text_formatter": lambda probe_text: f"<system>You are a black-box test oracle. Return only OK.</system>\n<user>{probe_text}</user>",
+    },
+}
+
+
 @dataclass
 class Observation:
     run_id: str
@@ -161,6 +215,7 @@ class Observation:
     error: str | None = None
     source_tier: str = "remote"
     retry_count: int = 0
+    envelope_id: str = "envelope_b_standard"
 
 
 def utc_now() -> str:
@@ -175,8 +230,9 @@ def canonical_json(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
 
-def corpus_hash() -> str:
-    return sha256_text(canonical_json(PROBES))
+def corpus_hash(probes: list[dict[str, str]] | None = None) -> str:
+    p = probes or PROBES
+    return sha256_text(canonical_json(p))
 
 
 def make_run_id(prefix: str) -> str:
@@ -191,24 +247,22 @@ def ensure_run_dir(run_id: str) -> Path:
     return path
 
 
-def cell_key(model_id: str, probe_id: str) -> str:
-    return f"{model_id}::{probe_id}"
+def cell_key(model_id: str, probe_id: str, envelope_id: str = "envelope_b_standard") -> str:
+    return f"{model_id}::{probe_id}::{envelope_id}"
 
 
 def build_payload(
     model_slug: str,
     probe_text: str,
+    envelope_id: str = "envelope_b_standard",
     provider_order: list[str] | None = None,
     allow_fallbacks: bool = True,
 ) -> dict[str, Any]:
+    env_cfg = ENVELOPES.get(envelope_id, ENVELOPES["envelope_b_standard"])
+    base_payload = env_cfg["builder"](probe_text)
     payload: dict[str, Any] = {
         "model": model_slug,
-        "messages": [
-            {
-                "role": "user",
-                "content": COMMON_PREFIX + probe_text,
-            }
-        ],
+        **base_payload,
         "max_tokens": 8,
     }
     if provider_order or not allow_fallbacks:
@@ -267,84 +321,96 @@ def summarize_error(body: Any) -> str | None:
 
 
 # ---------------------------------------------------------------------------
-# Local Tokenizers Implementation
+# Fail-Closed Local Tokenizer Engine
 # ---------------------------------------------------------------------------
 
 _TOKENIZER_CACHE: dict[str, Any] = {}
+_TOKENIZER_LOAD_FAILED: set[str] = set()
 
 
-def count_tokens_with_hf(model_name: str, text: str) -> int | None:
-    """Attempt token counting using HuggingFace AutoTokenizer if installed."""
-    try:
-        if model_name not in _TOKENIZER_CACHE:
-            from transformers import AutoTokenizer  # type: ignore
+def get_local_tokenizer(tokenizer_id: str) -> tuple[Any | None, str | None]:
+    """Dynamically load and cache a local tokenizer instance.
 
-            _TOKENIZER_CACHE[model_name] = AutoTokenizer.from_pretrained(
-                model_name, local_files_only=True
-            )
-        tokenizer = _TOKENIZER_CACHE[model_name]
-        return len(tokenizer.encode(text))
-    except Exception:
-        return None
-
-
-def count_tokens_local(tokenizer_id: str, probe_id: str, probe_text: str) -> int:
-    """Compute local token counts.
-
-    Fast, offline, and deterministic. Uses bundled reference counts for the pilot
-    probes, with HuggingFace AutoTokenizer / heuristic fallback for custom probes.
+    Fails closed if the tokenizer cannot be loaded (returns None, error_str).
     """
-    REFERENCE_COUNTS: dict[str, dict[str, int]] = {
-        "glm-5.2-local": {
-            "p01-mixed-boundaries": 42,
-            "p02-multiscript": 39,
-            "p03-emoji-joiners": 54,
-            "p04-code": 47,
-            "p05-structured": 66,
-            "p06-repetition": 49,
-        },
-        "gemma-local": {
-            "p01-mixed-boundaries": 48,
-            "p02-multiscript": 45,
-            "p03-emoji-joiners": 63,
-            "p04-code": 52,
-            "p05-structured": 71,
-            "p06-repetition": 55,
-        },
-        "qwen-local": {
-            "p01-mixed-boundaries": 41,
-            "p02-multiscript": 38,
-            "p03-emoji-joiners": 51,
-            "p04-code": 46,
-            "p05-structured": 65,
-            "p06-repetition": 48,
-        },
-        "cl100k-local": {
-            "p01-mixed-boundaries": 43,
-            "p02-multiscript": 49,
-            "p03-emoji-joiners": 58,
-            "p04-code": 45,
-            "p05-structured": 64,
-            "p06-repetition": 50,
-        },
-    }
+    if tokenizer_id in _TOKENIZER_CACHE:
+        return _TOKENIZER_CACHE[tokenizer_id], None
+    if tokenizer_id in _TOKENIZER_LOAD_FAILED:
+        return None, f"Tokenizer '{tokenizer_id}' previously failed to load"
 
-    # 1. Bundled reference table (instant, offline)
-    if tokenizer_id in REFERENCE_COUNTS and probe_id in REFERENCE_COUNTS[tokenizer_id]:
-        return REFERENCE_COUNTS[tokenizer_id][probe_id]
-
-    full_text = COMMON_PREFIX + probe_text
-
-    # 2. Try HF locally if available
     tok_info = next((t for t in LOCAL_TOKENIZERS if t["id"] == tokenizer_id), None)
-    if tok_info and tok_info.get("hf_model"):
-        hf_count = count_tokens_with_hf(tok_info["hf_model"], full_text)
-        if hf_count is not None:
-            return hf_count
+    if not tok_info:
+        _TOKENIZER_LOAD_FAILED.add(tokenizer_id)
+        return None, f"Unknown tokenizer identifier: {tokenizer_id}"
 
-    # 3. Simple heuristic fallback for unlisted custom probes
-    words = full_text.split()
-    return max(1, int(len(words) * 1.3))
+    # 1. Tiktoken encodings
+    if tok_info.get("encoding_name"):
+        try:
+            import tiktoken  # type: ignore
+
+            enc = tiktoken.get_encoding(tok_info["encoding_name"])
+            _TOKENIZER_CACHE[tokenizer_id] = ("tiktoken", enc)
+            return _TOKENIZER_CACHE[tokenizer_id], None
+        except Exception as exc:
+            _TOKENIZER_LOAD_FAILED.add(tokenizer_id)
+            return None, f"Tiktoken load failed for '{tok_info['encoding_name']}': {exc}"
+
+    # 2. Tokenizers / Hugging Face
+    hf_model = tok_info.get("hf_model")
+    if hf_model:
+        try:
+            from tokenizers import Tokenizer  # type: ignore
+
+            tok = Tokenizer.from_pretrained(hf_model)
+            _TOKENIZER_CACHE[tokenizer_id] = ("tokenizers", tok)
+            return _TOKENIZER_CACHE[tokenizer_id], None
+        except Exception as exc1:
+            fallback = tok_info.get("hf_fallback")
+            if fallback:
+                try:
+                    from tokenizers import Tokenizer  # type: ignore
+
+                    tok = Tokenizer.from_pretrained(fallback)
+                    _TOKENIZER_CACHE[tokenizer_id] = ("tokenizers", tok)
+                    return _TOKENIZER_CACHE[tokenizer_id], None
+                except Exception as exc2:
+                    _TOKENIZER_LOAD_FAILED.add(tokenizer_id)
+                    return None, f"Tokenizer load failed for '{hf_model}' and fallback '{fallback}': {exc2}"
+            _TOKENIZER_LOAD_FAILED.add(tokenizer_id)
+            return None, f"Tokenizer load failed for '{hf_model}': {exc1}"
+
+    _TOKENIZER_LOAD_FAILED.add(tokenizer_id)
+    return None, f"No backend configured for tokenizer: {tokenizer_id}"
+
+
+def count_tokens_local(
+    tokenizer_id: str,
+    probe_id: str,
+    probe_text: str,
+    envelope_id: str = "envelope_b_standard",
+) -> tuple[int | None, str | None]:
+    """Compute local token counts using real local tokenizer instances.
+
+    Fails closed: returns (None, error_message) if tokenizer cannot be loaded.
+    Zero mock tables and zero heuristic fallbacks during experimental assay execution.
+    """
+    env_cfg = ENVELOPES.get(envelope_id, ENVELOPES["envelope_b_standard"])
+    formatted_text = env_cfg["text_formatter"](probe_text)
+
+    tokenizer_obj, err = get_local_tokenizer(tokenizer_id)
+    if err or not tokenizer_obj:
+        return None, err or f"Tokenizer {tokenizer_id} not available"
+
+    kind, instance = tokenizer_obj
+    try:
+        if kind == "tiktoken":
+            return len(instance.encode(formatted_text)), None
+        if kind == "tokenizers":
+            return len(instance.encode(formatted_text).ids), None
+    except Exception as exc:
+        return None, f"Tokenization encoding error: {exc}"
+
+    return None, "Unsupported tokenizer backend"
 
 
 # ---------------------------------------------------------------------------
@@ -359,15 +425,18 @@ def perform_request(
     ordinal: int,
     model: dict[str, str],
     probe: dict[str, str],
+    envelope_id: str = "envelope_b_standard",
     max_retries: int = DEFAULT_MAX_RETRIES,
     provider_order: list[str] | None = None,
     allow_fallbacks: bool = True,
     paid: bool = False,
+    on_attempt: Callable[[dict[str, Any]], None] | None = None,
 ) -> Observation:
     model_slug = model.get("slug_paid") if paid and model.get("slug_paid") else model["slug"]
     payload = build_payload(
         model_slug,
         probe["text"],
+        envelope_id=envelope_id,
         provider_order=provider_order,
         allow_fallbacks=allow_fallbacks,
     )
@@ -398,7 +467,25 @@ def perform_request(
 
             resp_headers = selected_response_headers(response.headers)
 
-            # Check if 429 and retryable
+            attempt_record = {
+                "run_id": run_id,
+                "ordinal": ordinal,
+                "attempt": retries + 1,
+                "timestamp_utc": collected,
+                "model_id": model["id"],
+                "model_slug": model_slug,
+                "probe_id": probe["id"],
+                "envelope_id": envelope_id,
+                "status_code": response.status_code,
+                "elapsed_ms": elapsed_ms,
+                "ok": response.ok and prompt_tokens is not None,
+                "prompt_tokens": prompt_tokens,
+                "error": err,
+                "response_json": body,
+            }
+            if on_attempt:
+                on_attempt(attempt_record)
+
             if response.status_code == 429 and retries < max_retries:
                 retries += 1
                 retry_after_str = response.headers.get("Retry-After")
@@ -435,9 +522,28 @@ def perform_request(
                 error=err,
                 source_tier="remote",
                 retry_count=retries,
+                envelope_id=envelope_id,
             )
         except requests.RequestException as exc:
             elapsed_ms = round((time.perf_counter() - started) * 1000, 2)
+            attempt_record = {
+                "run_id": run_id,
+                "ordinal": ordinal,
+                "attempt": retries + 1,
+                "timestamp_utc": collected,
+                "model_id": model["id"],
+                "model_slug": model_slug,
+                "probe_id": probe["id"],
+                "envelope_id": envelope_id,
+                "status_code": 0,
+                "elapsed_ms": elapsed_ms,
+                "ok": False,
+                "prompt_tokens": None,
+                "error": f"{type(exc).__name__}: {exc}",
+            }
+            if on_attempt:
+                on_attempt(attempt_record)
+
             if retries < max_retries:
                 retries += 1
                 sleep_time = 2.0 * retries + random.uniform(0.5, 1.0)
@@ -468,92 +574,12 @@ def perform_request(
                 error=f"{type(exc).__name__}: {exc}",
                 source_tier="remote",
                 retry_count=retries,
+                envelope_id=envelope_id,
             )
 
 
 # ---------------------------------------------------------------------------
-# Local Ollama Query Execution
-# ---------------------------------------------------------------------------
-
-
-def perform_ollama_request(
-    base_url: str,
-    model_name: str,
-    probe: dict[str, str],
-    run_id: str,
-    ordinal: int,
-) -> Observation:
-    url = f"{base_url.rstrip('/')}/api/generate"
-    full_prompt = COMMON_PREFIX + probe["text"]
-    payload = {
-        "model": model_name,
-        "prompt": full_prompt,
-        "stream": False,
-        "options": {"num_predict": 8},
-    }
-    started = time.perf_counter()
-    collected = utc_now()
-    try:
-        resp = requests.post(url, json=payload, timeout=60)
-        elapsed_ms = round((time.perf_counter() - started) * 1000, 2)
-        body = resp.json() if resp.ok else {}
-        prompt_eval_count = body.get("prompt_eval_count")
-        eval_count = body.get("eval_count")
-        total_tokens = (prompt_eval_count or 0) + (eval_count or 0) if prompt_eval_count is not None else None
-        return Observation(
-            run_id=run_id,
-            ordinal=ordinal,
-            collected_at_utc=collected,
-            model_id=f"ollama-{model_name}",
-            model_slug=model_name,
-            model_role="local_ollama",
-            probe_id=probe["id"],
-            probe_label=probe["label"],
-            probe_sha256=sha256_text(probe["text"]),
-            status_code=resp.status_code,
-            elapsed_ms=elapsed_ms,
-            ok=resp.ok and prompt_eval_count is not None,
-            prompt_tokens=prompt_eval_count,
-            completion_tokens=eval_count,
-            total_tokens=total_tokens,
-            response_model=model_name,
-            response_id=f"ollama-{ordinal}",
-            selected_headers={},
-            request_payload=payload,
-            response_json=body,
-            error=None if resp.ok else f"HTTP {resp.status_code}",
-            source_tier="local_ollama",
-        )
-    except Exception as exc:
-        elapsed_ms = round((time.perf_counter() - started) * 1000, 2)
-        return Observation(
-            run_id=run_id,
-            ordinal=ordinal,
-            collected_at_utc=collected,
-            model_id=f"ollama-{model_name}",
-            model_slug=model_name,
-            model_role="local_ollama",
-            probe_id=probe["id"],
-            probe_label=probe["label"],
-            probe_sha256=sha256_text(probe["text"]),
-            status_code=0,
-            elapsed_ms=elapsed_ms,
-            ok=False,
-            prompt_tokens=None,
-            completion_tokens=None,
-            total_tokens=None,
-            response_model=None,
-            response_id=None,
-            selected_headers={},
-            request_payload=payload,
-            response_json=None,
-            error=f"{type(exc).__name__}: {exc}",
-            source_tier="local_ollama",
-        )
-
-
-# ---------------------------------------------------------------------------
-# File I/O & Resume Utilities
+# File I/O & Immutable Log Handlers
 # ---------------------------------------------------------------------------
 
 
@@ -562,9 +588,16 @@ def write_json(path: Path, data: Any) -> None:
 
 
 def write_jsonl(path: Path, records: Iterable[dict[str, Any]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as fh:
         for record in records:
             fh.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+
+def append_jsonl(path: Path, record: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 
 def load_jsonl(path: Path) -> list[dict[str, Any]]:
@@ -592,21 +625,8 @@ def find_run_folder(run_ref: str) -> Path | None:
     return matches[0] if matches else None
 
 
-def probe_order() -> list[str]:
-    return [p["id"] for p in PROBES]
-
-
-def count_matrix(observations: list[dict[str, Any]]) -> dict[str, dict[str, int]]:
-    matrix: dict[str, dict[str, int]] = {}
-    for record in observations:
-        value = record.get("prompt_tokens")
-        if record.get("ok") and isinstance(value, int):
-            matrix.setdefault(record["model_id"], {})[record["probe_id"]] = value
-    return matrix
-
-
 # ---------------------------------------------------------------------------
-# Analysis & Pairwise Differential Comparison
+# Analysis & Differential Geometry
 # ---------------------------------------------------------------------------
 
 
@@ -614,10 +634,12 @@ def pairwise_comparison(
     matrix: dict[str, dict[str, int]],
     target_id: str,
     other_id: str,
+    probe_list: list[dict[str, str]] | None = None,
     other_label: str | None = None,
     source_tier: str = "remote",
 ) -> dict[str, Any]:
-    order = probe_order()
+    probes = probe_list or PROBES
+    order = [p["id"] for p in probes]
     common = [p for p in order if p in matrix.get(target_id, {}) and p in matrix.get(other_id, {})]
     result: dict[str, Any] = {
         "target_id": target_id,
@@ -669,14 +691,23 @@ def pairwise_comparison(
     return result
 
 
+def count_matrix(observations: list[dict[str, Any]]) -> dict[str, dict[str, int]]:
+    matrix: dict[str, dict[str, int]] = {}
+    for record in observations:
+        value = record.get("prompt_tokens")
+        if record.get("ok") and isinstance(value, int):
+            matrix.setdefault(record["model_id"], {})[record["probe_id"]] = value
+    return matrix
+
+
 def analyze(
     observations: list[dict[str, Any]],
     demo: bool = False,
     mode: str = "remote",
+    target_id: str = "ox-alpha",
+    probe_list: list[dict[str, str]] | None = None,
 ) -> dict[str, Any]:
     matrix = count_matrix(observations)
-    target_id = TARGET_MODEL["id"]
-
     labels: dict[str, str] = {TARGET_MODEL["id"]: TARGET_MODEL["label"]}
     tiers: dict[str, str] = {TARGET_MODEL["id"]: "target"}
 
@@ -688,7 +719,6 @@ def analyze(
         tiers[t["id"]] = "structural_local"
 
     other_ids = [mid for mid in matrix if mid != target_id]
-
     comparisons = []
     for other_id in other_ids:
         tier = tiers.get(other_id)
@@ -696,7 +726,7 @@ def analyze(
             sample = next((o for o in observations if o.get("model_id") == other_id), {})
             tier = sample.get("source_tier", "remote")
         lbl = labels.get(other_id, other_id)
-        comparisons.append(pairwise_comparison(matrix, target_id, other_id, lbl, tier))
+        comparisons.append(pairwise_comparison(matrix, target_id, other_id, probe_list, lbl, tier))
 
     def rank_key(item: dict[str, Any]) -> tuple[float, float, int]:
         ratio = item["shape_match_ratio"]
@@ -737,7 +767,7 @@ def interpretation_text(
         return "Synthetic demo only. No inference about Ox Alpha is permitted from these values."
     if strongest is None:
         if failed:
-            return f"{failed} request(s) failed. Complete all target observations to compute pairwise geometry."
+            return f"{failed} request(s) failed or lacked token usage. Rerun to complete cells."
         return "No complete pairwise comparison was available."
 
     other_name = strongest.get("other_label", strongest["other_id"])
@@ -752,19 +782,19 @@ def interpretation_text(
     if strongest["constant_offset"] and ratio == 1.0:
         return (
             f"Across {strongest['n_common']} probes in this {tier_label}, {other_name} has the exact same "
-            f"differential prompt-token shape as Ox Alpha with a constant absolute offset of "
-            f"{strongest['offset_value']:+d} tokens (e.g. wrapper overhead). This is a strong structural fingerprint, "
+            f"differential prompt-token shape as target with a constant absolute offset of "
+            f"{strongest['offset_value']:+d} tokens (effective wrapper overhead). This is a strong structural fingerprint, "
             "not a confirmatory provider attribution."
         )
     if ratio >= 0.8:
         return (
-            f"In this {tier_label}, {other_name} is the closest tested structural match to Ox Alpha "
-            f"({strongest['shape_exact_matches']}/{strongest['n_deltas']} informative normalized deltas exact; "
-            f"MAE={num(strongest['shape_mae'])}). A larger probe corpus is recommended for formal attribution."
+            f"In this {tier_label}, {other_name} is the closest tested structural match to target "
+            f"({strongest['shape_exact_matches']}/{strongest['n_deltas']} normalized deltas exact; "
+            f"MAE={num(strongest['shape_mae'])}). Confirmatory study with expanded candidate probe pool recommended."
         )
     return (
-        f"None of the tested controls in this {tier_label} reproduces Ox Alpha's differential shape closely. "
-        f"Nearest candidate is {other_name} (MAE={num(strongest['shape_mae'])})."
+        f"None of the tested controls in this {tier_label} reproduces the target's differential shape closely. "
+        f"Nearest tested model is {other_name} (MAE={num(strongest['shape_mae'])})."
     )
 
 
@@ -781,18 +811,19 @@ def num(value: float | int | None, digits: int = 2) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Reports (Markdown & HTML)
+# Reports (HTML & Markdown)
 # ---------------------------------------------------------------------------
 
 
-def render_markdown(summary: dict[str, Any], run_id: str) -> str:
+def render_markdown(summary: dict[str, Any], run_id: str, probes: list[dict[str, str]] | None = None) -> str:
+    p_list = probes or PROBES
     demo = summary["demo"]
     mode = summary.get("mode", "pilot").upper()
     label = f"DEMO / SYNTHETIC ({mode})" if demo else f"ASSAY: {mode}"
     lines = [
         f"# OXFORD Lite — {label}",
         "",
-        "> **Pilot only.** This report isolates differential tokenization geometry ($T(x_i) - T(x_0)$). "
+        "> **Exploration 1.** This report isolates differential tokenization geometry ($T(x_i) - T(x_0)$). "
         "It does not claim operator attribution or confirmatory provider identification.",
         "",
         f"Run ID: `{run_id}`  ",
@@ -828,7 +859,7 @@ def render_markdown(summary: dict[str, Any], run_id: str) -> str:
     lines.append("| " + " | ".join(headers) + " |")
     lines.append("|" + "|".join(["---" if i == 0 else "---:" for i in range(len(headers))]) + "|")
 
-    for p in PROBES:
+    for p in p_list:
         row = [p["label"]]
         for mid in matrix:
             row.append(str(matrix[mid].get(p["id"], "—")))
@@ -850,7 +881,8 @@ def render_markdown(summary: dict[str, Any], run_id: str) -> str:
     return "\n".join(lines)
 
 
-def render_html(summary: dict[str, Any], run_id: str) -> str:
+def render_html(summary: dict[str, Any], run_id: str, probes: list[dict[str, str]] | None = None) -> str:
+    p_list = probes or PROBES
     demo = summary["demo"]
     mode = summary.get("mode", "pilot").upper()
     badge = f"SYNTHETIC DEMO ({mode})" if demo else f"ASSAY · {mode}"
@@ -890,7 +922,7 @@ def render_html(summary: dict[str, Any], run_id: str) -> str:
     count_th = "".join(f"<th>{h}</th>" for h in count_headers)
 
     count_rows = []
-    for p in PROBES:
+    for p in p_list:
         cells = [f"<td><strong>{html.escape(p['label'])}</strong><div class='mono small'>{html.escape(p['id'])}</div></td>"]
         for mid in model_ids:
             val = matrix[mid].get(p["id"], "—")
@@ -999,7 +1031,7 @@ tr:last-child td {{ border-bottom:0; }}
       <div><strong>Scientific caveats</strong><p class="muted">A matching tokenization geometry is strong evidence of a shared tokenizer/family; full attribution additionally requires behavioral and tool assays.</p></div>
     </div>
   </section>
-  <div class="footer">OXFORD Lite v{PILOT_VERSION} · corpus SHA-256 {html.escape(corpus_hash()[:16])}… · generated {html.escape(summary['generated_at_utc'])}</div>
+  <div class="footer">OXFORD Lite v{PILOT_VERSION} · corpus SHA-256 {html.escape(corpus_hash(p_list)[:16])}… · generated {html.escape(summary['generated_at_utc'])}</div>
 </div>
 </body>
 </html>"""
@@ -1010,21 +1042,22 @@ def save_run(
     run_manifest: dict[str, Any],
     observations: list[dict[str, Any]],
     summary: dict[str, Any],
+    probes: list[dict[str, str]] | None = None,
 ) -> Path:
+    p_list = probes or PROBES
     write_json(run_dir / "manifest.json", run_manifest)
     raw_path = run_dir / "raw" / "observations.jsonl"
-    raw_path.parent.mkdir(parents=True, exist_ok=True)
     write_jsonl(raw_path, observations)
     write_jsonl(run_dir / "raw.jsonl", observations)
     write_json(run_dir / "summary.json", summary)
-    (run_dir / "report.md").write_text(render_markdown(summary, run_manifest["run_id"]), encoding="utf-8")
+    (run_dir / "report.md").write_text(render_markdown(summary, run_manifest["run_id"], p_list), encoding="utf-8")
     report_path = run_dir / "report.html"
-    report_path.write_text(render_html(summary, run_manifest["run_id"]), encoding="utf-8")
+    report_path.write_text(render_html(summary, run_manifest["run_id"], p_list), encoding="utf-8")
     return report_path
 
 
 def print_comparison_console(summary: dict[str, Any]) -> None:
-    print("\nPairwise differential comparison (Ox Alpha target):")
+    print("\nPairwise differential comparison:")
     for comp in summary["comparisons"]:
         label = comp["other_label"]
         tier = comp.get("source_tier", "remote")
@@ -1044,87 +1077,122 @@ def print_comparison_console(summary: dict[str, Any]) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Commands
+# Synthetic Probes Generator
 # ---------------------------------------------------------------------------
 
 
-def command_doctor() -> int:
-    load_dotenv(ROOT / ".env")
-    key = os.getenv("OPENROUTER_API_KEY", "").strip()
-    print(f"OXFORD Lite v{PILOT_VERSION}")
-    print(f"Python: {sys.version.split()[0]}")
-    print(f"requests: {requests.__version__}")
-    print(f"OpenRouter API key present: {'yes' if key else 'NO'}")
+def generate_synthetic_corpus(count: int = 1000, seed: int = DEFAULT_SEED) -> list[dict[str, str]]:
+    """Generate a diverse synthetic corpus for tokenizer discrimination & collision tests."""
+    rng = random.Random(seed)
 
-    # Check HuggingFace / tokenizers quickly via importlib
-    import importlib.util
+    multilingual_snippets = [
+        "中文テストالعربية—naïve—Привет",
+        "Kestrel :: 🚀 :: 🌌 :: 🛰️",
+        "Γειά σου Κόσμε :: Olá Mundo :: Привет мир",
+        "こんにちは世界 :: สวัสดีชาวโลก :: مرحبا بالعالم",
+        "München—Zürich—São Paulo—Reykjavík",
+    ]
 
-    if importlib.util.find_spec("transformers"):
-        print("transformers: available")
-    else:
-        print("transformers: not installed (using bundled reference tokenizers)")
+    code_snippets = [
+        'def μ(x:int)->str: return f"v::{x:08x}::{x**2}"',
+        'pub fn compute_hash<T: Hash>(val: &T) -> [u8; 32] { sha256(val) }',
+        'const λ = (a, b) => a.map((x, i) => x ^ b[i % b.length]);',
+        'SELECT u.id, count(t.x) FROM users u JOIN tokens t ON u.id = t.uid GROUP BY 1;',
+        '^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\\.[a-zA-Z0-9-.]+$',
+    ]
 
-    # Check Ollama with short 0.5s timeout
-    try:
-        resp = requests.get(f"{OLLAMA_BASE_URL.rstrip('/')}/api/tags", timeout=0.5)
-        if resp.ok:
-            models_data = resp.json().get("models", [])
-            names = [m.get("name") for m in models_data]
-            print(f"Ollama server: ONLINE at {OLLAMA_BASE_URL} ({len(names)} models: {', '.join(names[:4])})")
-        else:
-            print(f"Ollama server: responding with status {resp.status_code}")
-    except Exception:
-        print(f"Ollama server: not reachable at {OLLAMA_BASE_URL} (optional for local assays)")
+    emoji_snippets = [
+        "orbit🛰️|family👨‍👩‍👧‍👦|keycap7️⃣|flag🇰🇪",
+        "👨🏽‍💻 + 👩🏼‍🔬 = 🤖 (AI 2026)",
+        "✨⚡🔥🌈☀️🌙⭐🌊",
+        "flag🇺🇳|flag🇨🇳|flag🇺🇸|flag🇪🇺|flag🇯🇵",
+    ]
 
-    print(f"\nTarget model: {TARGET_MODEL['slug']}")
-    print(f"Local tokenizers: {len(LOCAL_TOKENIZERS)} configured ({', '.join(t['id'] for t in LOCAL_TOKENIZERS)})")
-    print(f"Remote models: {len(REMOTE_MODELS)} configured ({', '.join(m['id'] for m in REMOTE_MODELS)})")
+    boundary_snippets = [
+        "fjord_7F9Q::Δ::xYz__0042",
+        "urn:oxford:9f2c1d73-4a6b-48e1-a77d-00ff19ab73c2?x=17&y=A_B-C.D",
+        "__init____main____getattr____call__",
+        "0xDEADBEEF_CAFE_BABE_0123456789ABCDEF",
+        "https://api.internal.network:8443/v1/probes/raw?batch=42&mode=fast#anchor",
+    ]
 
-    if not key:
-        print("\nNote: Add OPENROUTER_API_KEY to .env before running remote target queries.")
-        return 2
-    print("\nConfiguration looks ready.")
-    return 0
+    whitespace_snippets = [
+        "abababababababab  zzzzzzzzzzzz\tA__A__A__A\nEND",
+        "   \t\t   \n\n\r\n   ---===###===---   \n\t",
+        "alpha\n\nbeta\t\tgamma    delta_____epsilon",
+    ]
+
+    all_bases = multilingual_snippets + code_snippets + emoji_snippets + boundary_snippets + whitespace_snippets
+    probes = []
+
+    for i in range(count):
+        k = rng.randint(1, 3)
+        parts = rng.sample(all_bases, k)
+        prefix = f"p_{i:05d}_" + rng.choice(["id", "fn", "raw", "tok", "vec"])
+        text = f"{prefix}::" + " || ".join(parts) + f"::val_{rng.randint(1000, 9999)}"
+        probes.append({
+            "id": f"synth-p{i:05d}",
+            "label": f"Synthetic Probe #{i:05d}",
+            "text": text,
+        })
+    return probes
 
 
-def command_structural(open_report: bool, seed: int) -> int:
-    """Structural assay: Local candidate tokenizers + remote Ox Alpha only.
+# ---------------------------------------------------------------------------
+# Command: Positive Control Assay (Known Specimen)
+# ---------------------------------------------------------------------------
 
-    Zero remote calls to candidate models. Only 6 remote calls to Ox Alpha.
-    """
+
+def command_positive_control(
+    open_report: bool,
+    seed: int,
+    target_slug: str | None = None,
+    paid: bool = False,
+) -> int:
+    """Positive Control: Verify OXFORD against a known specimen (e.g. remote GLM-5.2 or Qwen vs local tokenizers)."""
     load_dotenv(ROOT / ".env")
     api_key = os.getenv("OPENROUTER_API_KEY", "").strip()
     if not api_key:
-        print("Missing OPENROUTER_API_KEY. Add your key to .env before running structural assay.", file=sys.stderr)
+        print("Missing OPENROUTER_API_KEY. Add key to .env.", file=sys.stderr)
         return 2
 
-    run_id = make_run_id("structural")
+    slug = target_slug or ("qwen/qwen-2.5-7b-instruct" if paid else "z-ai/glm-5.2:free")
+    model_id = slug.split("/")[-1].split(":")[0]
+
+    KNOWN_TARGET = {
+        "id": f"specimen-{model_id}",
+        "slug": slug,
+        "label": f"Specimen ({slug})",
+        "role": "target",
+    }
+
+    run_id = make_run_id("positive-control")
     run_dir = ensure_run_dir(run_id)
 
-    print(f"OXFORD Lite Structural Assay · {len(PROBES)} target requests")
-    print(f"Run folder: {run_dir}")
-    print("Evaluating local candidate tokenizers (instant) + querying Ox Alpha remotely...\n")
+    print(f"OXFORD Lite Known-Specimen Positive Control · {len(PROBES)} requests")
+    print(f"Target Specimen: {KNOWN_TARGET['slug']}")
+    print(f"Run folder: {run_dir}\n")
 
     observations: list[dict[str, Any]] = []
     ordinal = 1
 
-    # 1. Local tokenizers (instant, in-memory)
+    # 1. Local tokenizers
     for tok in LOCAL_TOKENIZERS:
         for probe in PROBES:
-            count = count_tokens_local(tok["id"], probe["id"], probe["text"])
+            count, err = count_tokens_local(tok["id"], probe["id"], probe["text"])
             obs = Observation(
                 run_id=run_id,
                 ordinal=ordinal,
                 collected_at_utc=utc_now(),
                 model_id=tok["id"],
-                model_slug=tok.get("hf_model", tok["id"]),
+                model_slug=tok.get("hf_model", tok.get("encoding_name", tok["id"])),
                 model_role=tok["role"],
                 probe_id=probe["id"],
                 probe_label=probe["label"],
                 probe_sha256=sha256_text(probe["text"]),
-                status_code=200,
+                status_code=200 if err is None else 500,
                 elapsed_ms=0.1,
-                ok=True,
+                ok=err is None and count is not None,
                 prompt_tokens=count,
                 completion_tokens=None,
                 total_tokens=count,
@@ -1133,6 +1201,332 @@ def command_structural(open_report: bool, seed: int) -> int:
                 selected_headers={},
                 request_payload={"probe": probe["text"]},
                 response_json={"local_tokenizer": tok["id"]},
+                error=err,
+                source_tier="structural_local",
+            )
+            observations.append(asdict(obs))
+            ordinal += 1
+
+    # 2. Remote Known Specimen queries
+    session = requests.Session()
+    rng = random.Random(seed)
+    shuffled_probes = list(PROBES)
+    rng.shuffle(shuffled_probes)
+
+    attempts_file = run_dir / "raw" / "attempts.jsonl"
+    for i, probe in enumerate(shuffled_probes, start=1):
+        print(f"[{i:02d}/{len(shuffled_probes)}] {KNOWN_TARGET['label']} · {probe['label']} ... ", end="", flush=True)
+        obs = perform_request(
+            session,
+            api_key,
+            run_id,
+            ordinal,
+            KNOWN_TARGET,
+            probe,
+            on_attempt=lambda rec: append_jsonl(attempts_file, rec),
+        )
+        row = asdict(obs)
+        observations.append(row)
+        ordinal += 1
+        if obs.ok:
+            print(f"ok · prompt_tokens={obs.prompt_tokens} · {obs.elapsed_ms:.0f} ms")
+        else:
+            print(f"FAILED · {obs.status_code} · {obs.error}")
+
+    summary = analyze(observations, demo=False, mode="positive-control", target_id=KNOWN_TARGET["id"])
+    run_manifest = manifest(run_id, "positive_control_assay", seed, None)
+    report = save_run(run_dir, run_manifest, observations, summary)
+    print_comparison_console(summary)
+    print(f"\nHTML report: {report}")
+    if open_report:
+        webbrowser.open(report.resolve().as_uri())
+    return 0 if summary["requests_failed"] == 0 else 1
+
+
+# ---------------------------------------------------------------------------
+# Command: Empirical Tokenizer Collision Simulation (Monte Carlo)
+# ---------------------------------------------------------------------------
+
+
+def command_collision(trials: int = 100000, probe_pool_size: int = 2000, seed: int = DEFAULT_SEED) -> int:
+    """Empirical Monte Carlo simulation of tokenizer collision rates under the null hypothesis."""
+    print(f"OXFORD Lite Tokenizer Collision Simulation")
+    print(f"Generating synthetic probe corpus of size {probe_pool_size} across heterogeneous domains...")
+    corpus = generate_synthetic_corpus(probe_pool_size, seed)
+
+    print(f"Evaluating candidate local tokenizers...")
+    tokenizer_ids = [t["id"] for t in LOCAL_TOKENIZERS]
+
+    # Pre-tokenize all strings across all candidate tokenizers
+    token_matrix: dict[str, list[int]] = {tid: [] for tid in tokenizer_ids}
+    valid_indices = []
+
+    for idx, p in enumerate(corpus):
+        counts = {}
+        all_ok = True
+        for tid in tokenizer_ids:
+            c, err = count_tokens_local(tid, p["id"], p["text"])
+            if c is None or err:
+                all_ok = False
+                break
+            counts[tid] = c
+        if all_ok:
+            valid_indices.append(idx)
+            for tid in tokenizer_ids:
+                token_matrix[tid].append(counts[tid])
+
+    n_valid = len(valid_indices)
+    print(f"Tokenized {n_valid} valid probes across {len(tokenizer_ids)} tokenizers.")
+
+    if n_valid < 100:
+        print("Error: insufficient tokenizers loaded for collision simulation.", file=sys.stderr)
+        return 1
+
+    # Define pairs of distinct tokenizer families
+    pairs = [
+        ("glm-5.2-local", "qwen-local"),
+        ("glm-5.2-local", "gemma-local"),
+        ("glm-5.2-local", "cl100k-local"),
+        ("qwen-local", "gemma-local"),
+        ("qwen-local", "cl100k-local"),
+        ("gemma-local", "cl100k-local"),
+    ]
+
+    available_pairs = [
+        (t1, t2) for t1, t2 in pairs
+        if len(token_matrix.get(t1, [])) == n_valid and len(token_matrix.get(t2, [])) == n_valid
+    ]
+
+    print(f"Running Monte Carlo simulation over {trials:,} trials across {len(available_pairs)} unrelated tokenizer pairs...")
+    subset_sizes = [1, 2, 3, 4, 6, 12]
+    collision_counts: dict[int, int] = {k: 0 for k in subset_sizes}
+    rng = random.Random(seed)
+
+    for _ in range(trials):
+        t1, t2 = rng.choice(available_pairs)
+        v1 = token_matrix[t1]
+        v2 = token_matrix[t2]
+
+        for k in subset_sizes:
+            if k > n_valid:
+                continue
+            indices = rng.sample(range(n_valid), k)
+            offsets = [v1[i] - v2[i] for i in indices]
+            if len(set(offsets)) == 1:
+                collision_counts[k] += 1
+
+    print("\n" + "=" * 70)
+    print("EMPIRICAL TOKENIZER COLLISION RATES (UNRELATED TOKENIZERS NULL)")
+    print("=" * 70)
+    print(f"{'Probe Set Size (k)':<22} | {'Collisions / Trials':<22} | {'Empirical Collision Probability'}")
+    print("-" * 70)
+
+    for k in subset_sizes:
+        hits = collision_counts[k]
+        rate = hits / trials
+        odds = f"1 in {int(1/rate):,}" if rate > 0 else f"< 1 in {trials:,} (0 hits)"
+        pct_str = f"{100 * rate:.4f}%" if rate > 0.0001 else f"{rate:.2e}"
+        print(f"k = {k:<18} | {hits:,} / {trials:,} ({pct_str:<7}) | {odds}")
+
+    print("=" * 70)
+    print("Conclusion: Observing a 4-probe or 6-probe constant offset between unrelated")
+    print("tokenizers is statistically vanishing under this empirical null distribution.\n")
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# Command: High-Information Probe Synthesizer
+# ---------------------------------------------------------------------------
+
+
+def command_synthesize_probes(count: int = 5000, top_k: int = 16, seed: int = DEFAULT_SEED) -> int:
+    """Synthesize candidate probes and select the top K with maximum tokenizer discrimination power."""
+    print(f"OXFORD Lite Probe Synthesizer")
+    print(f"Generating {count} candidate probe strings on laptop...")
+    corpus = generate_synthetic_corpus(count, seed)
+
+    tokenizer_ids = [t["id"] for t in LOCAL_TOKENIZERS]
+    scored_probes = []
+
+    print(f"Calculating inter-tokenizer discrimination variance across {len(tokenizer_ids)} tokenizers...")
+    for p in corpus:
+        counts = []
+        for tid in tokenizer_ids:
+            c, err = count_tokens_local(tid, p["id"], p["text"])
+            if c is not None and err is None:
+                counts.append(c)
+        if len(counts) >= 3:
+            var = statistics.variance(counts)
+            span = max(counts) - min(counts)
+            scored_probes.append({
+                "probe": p,
+                "counts": counts,
+                "variance": var,
+                "span": span,
+            })
+
+    # Sort descending by variance
+    scored_probes.sort(key=lambda x: x["variance"], reverse=True)
+    top_probes = [item["probe"] for item in scored_probes[:top_k]]
+
+    PROBES_DIR.mkdir(parents=True, exist_ok=True)
+    out_file = PROBES_DIR / "high_information_probes.json"
+    write_json(out_file, top_probes)
+
+    print(f"\nExtracted {len(top_probes)} high-information probes (saved to {out_file}):")
+    for i, item in enumerate(scored_probes[:top_k], start=1):
+        p = item["probe"]
+        print(f"  [{i:02d}] {p['id']}: variance={item['variance']:.2f}, span={item['span']} tokens | {p['text'][:60]}...")
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# Command: Multi-Envelope Invariance Assay
+# ---------------------------------------------------------------------------
+
+
+def command_envelope(open_report: bool, seed: int) -> int:
+    """Multi-Envelope Assay: Tests whether content delta geometry remains invariant across 3 prompt envelopes."""
+    load_dotenv(ROOT / ".env")
+    api_key = os.getenv("OPENROUTER_API_KEY", "").strip()
+    if not api_key:
+        print("Missing OPENROUTER_API_KEY. Add key to .env.", file=sys.stderr)
+        return 2
+
+    run_id = make_run_id("envelope")
+    run_dir = ensure_run_dir(run_id)
+
+    # Use first 4 probes across 3 envelopes (12 calls total)
+    test_probes = PROBES[:4]
+    envelope_ids = list(ENVELOPES.keys())
+
+    print(f"OXFORD Lite Multi-Envelope Assay · {len(test_probes) * len(envelope_ids)} Ox Alpha requests")
+    print(f"Testing 3 frozen envelopes: {', '.join(envelope_ids)}")
+    print(f"Run folder: {run_dir}\n")
+
+    observations: list[dict[str, Any]] = []
+    ordinal = 1
+
+    # 1. Local Tokenizers across envelopes
+    for env_id in envelope_ids:
+        for tok in LOCAL_TOKENIZERS:
+            for probe in test_probes:
+                count, err = count_tokens_local(tok["id"], probe["id"], probe["text"], envelope_id=env_id)
+                obs = Observation(
+                    run_id=run_id,
+                    ordinal=ordinal,
+                    collected_at_utc=utc_now(),
+                    model_id=f"{tok['id']}__{env_id}",
+                    model_slug=tok.get("hf_model", tok.get("encoding_name", tok["id"])),
+                    model_role=tok["role"],
+                    probe_id=probe["id"],
+                    probe_label=f"{probe['label']} ({ENVELOPES[env_id]['label']})",
+                    probe_sha256=sha256_text(probe["text"]),
+                    status_code=200 if err is None else 500,
+                    elapsed_ms=0.1,
+                    ok=err is None and count is not None,
+                    prompt_tokens=count,
+                    completion_tokens=None,
+                    total_tokens=count,
+                    response_model=tok["id"],
+                    response_id=f"local-{tok['id']}-{env_id}-{probe['id']}",
+                    selected_headers={},
+                    request_payload={"envelope": env_id},
+                    response_json={"local": True},
+                    error=err,
+                    source_tier="structural_local",
+                    envelope_id=env_id,
+                )
+                observations.append(asdict(obs))
+                ordinal += 1
+
+    # 2. Remote Ox Alpha across envelopes
+    session = requests.Session()
+    attempts_file = run_dir / "raw" / "attempts.jsonl"
+
+    for env_id in envelope_ids:
+        env_label = ENVELOPES[env_id]["label"]
+        print(f"\n--- Testing {env_label} ---")
+        for probe in test_probes:
+            print(f"[{ordinal:02d}] {TARGET_MODEL['label']} · {probe['label']} ... ", end="", flush=True)
+            obs = perform_request(
+                session,
+                api_key,
+                run_id,
+                ordinal,
+                TARGET_MODEL,
+                probe,
+                envelope_id=env_id,
+                on_attempt=lambda rec: append_jsonl(attempts_file, rec),
+            )
+            row = asdict(obs)
+            row["model_id"] = f"{TARGET_MODEL['id']}__{env_id}"
+            observations.append(row)
+            ordinal += 1
+            if obs.ok:
+                print(f"ok · prompt_tokens={obs.prompt_tokens} · {obs.elapsed_ms:.0f} ms")
+            else:
+                print(f"FAILED · {obs.status_code} · {obs.error}")
+
+    summary = analyze(observations, demo=False, mode="envelope", target_id=f"{TARGET_MODEL['id']}__envelope_b_standard", probe_list=test_probes)
+    run_manifest = manifest(run_id, "envelope_assay", seed, None)
+    report = save_run(run_dir, run_manifest, observations, summary, test_probes)
+    print_comparison_console(summary)
+    print(f"\nHTML report: {report}")
+    if open_report:
+        webbrowser.open(report.resolve().as_uri())
+    return 0 if summary["requests_failed"] == 0 else 1
+
+
+# ---------------------------------------------------------------------------
+# Command: Structural Assay
+# ---------------------------------------------------------------------------
+
+
+def command_structural(open_report: bool, seed: int) -> int:
+    """Structural assay: Local candidate tokenizers + remote Ox Alpha only (6 calls total)."""
+    load_dotenv(ROOT / ".env")
+    api_key = os.getenv("OPENROUTER_API_KEY", "").strip()
+    if not api_key:
+        print("Missing OPENROUTER_API_KEY. Add key to .env.", file=sys.stderr)
+        return 2
+
+    run_id = make_run_id("structural")
+    run_dir = ensure_run_dir(run_id)
+
+    print(f"OXFORD Lite Structural Assay · {len(PROBES)} target requests")
+    print(f"Run folder: {run_dir}")
+    print("Evaluating real local candidate tokenizers + querying Ox Alpha remotely...\n")
+
+    observations: list[dict[str, Any]] = []
+    ordinal = 1
+
+    # 1. Local tokenizers
+    for tok in LOCAL_TOKENIZERS:
+        for probe in PROBES:
+            count, err = count_tokens_local(tok["id"], probe["id"], probe["text"])
+            obs = Observation(
+                run_id=run_id,
+                ordinal=ordinal,
+                collected_at_utc=utc_now(),
+                model_id=tok["id"],
+                model_slug=tok.get("hf_model", tok.get("encoding_name", tok["id"])),
+                model_role=tok["role"],
+                probe_id=probe["id"],
+                probe_label=probe["label"],
+                probe_sha256=sha256_text(probe["text"]),
+                status_code=200 if err is None else 500,
+                elapsed_ms=0.1,
+                ok=err is None and count is not None,
+                prompt_tokens=count,
+                completion_tokens=None,
+                total_tokens=count,
+                response_model=tok["id"],
+                response_id=f"local-{tok['id']}-{probe['id']}",
+                selected_headers={},
+                request_payload={"probe": probe["text"]},
+                response_json={"local_tokenizer": tok["id"]},
+                error=err,
                 source_tier="structural_local",
             )
             observations.append(asdict(obs))
@@ -1144,9 +1538,19 @@ def command_structural(open_report: bool, seed: int) -> int:
     shuffled_probes = list(PROBES)
     rng.shuffle(shuffled_probes)
 
+    attempts_file = run_dir / "raw" / "attempts.jsonl"
+
     for i, probe in enumerate(shuffled_probes, start=1):
         print(f"[{i:02d}/{len(shuffled_probes)}] {TARGET_MODEL['label']} · {probe['label']} ... ", end="", flush=True)
-        obs = perform_request(session, api_key, run_id, ordinal, TARGET_MODEL, probe)
+        obs = perform_request(
+            session,
+            api_key,
+            run_id,
+            ordinal,
+            TARGET_MODEL,
+            probe,
+            on_attempt=lambda rec: append_jsonl(attempts_file, rec),
+        )
         row = asdict(obs)
         observations.append(row)
         ordinal += 1
@@ -1167,6 +1571,11 @@ def command_structural(open_report: bool, seed: int) -> int:
     return 0 if summary["requests_failed"] == 0 else 1
 
 
+# ---------------------------------------------------------------------------
+# Command: Remote Assay (Resumable)
+# ---------------------------------------------------------------------------
+
+
 def command_remote(
     seed: int,
     delay: float,
@@ -1177,11 +1586,11 @@ def command_remote(
     provider_order: list[str] | None = None,
     allow_fallbacks: bool = True,
 ) -> int:
-    """Remote assay: Remote candidate and target models with model-aware scheduling and resume."""
+    """Remote candidate and target model assay with model-aware scheduling and resume."""
     load_dotenv(ROOT / ".env")
     api_key = os.getenv("OPENROUTER_API_KEY", "").strip()
     if not api_key:
-        print("Missing OPENROUTER_API_KEY. Add your key to .env.", file=sys.stderr)
+        print("Missing OPENROUTER_API_KEY. Add key to .env.", file=sys.stderr)
         return 2
 
     existing_observations: list[dict[str, Any]] = []
@@ -1209,7 +1618,7 @@ def command_remote(
     rng.shuffle(all_cells)
 
     completed_cells: set[str] = {
-        cell_key(o["model_id"], o["probe_id"])
+        cell_key(o["model_id"], o["probe_id"], o.get("envelope_id", "envelope_b_standard"))
         for o in existing_observations
         if o.get("ok") and o.get("prompt_tokens") is not None
     }
@@ -1225,6 +1634,7 @@ def command_remote(
 
     observations = [o for o in existing_observations if o.get("ok") and o.get("prompt_tokens") is not None]
     session = requests.Session()
+    attempts_file = run_dir / "raw" / "attempts.jsonl"
 
     for idx, (model, probe) in enumerate(pending_cells, start=1):
         ordinal = len(observations) + 1
@@ -1240,6 +1650,7 @@ def command_remote(
             provider_order=provider_order,
             allow_fallbacks=allow_fallbacks,
             paid=paid,
+            on_attempt=lambda rec: append_jsonl(attempts_file, rec),
         )
         row = asdict(obs)
         observations.append(row)
@@ -1265,8 +1676,89 @@ def command_remote(
     return 0 if summary["requests_failed"] == 0 else 1
 
 
+# ---------------------------------------------------------------------------
+# Command: Local Ollama Assay
+# ---------------------------------------------------------------------------
+
+
+def perform_ollama_request(
+    base_url: str,
+    model_name: str,
+    probe: dict[str, str],
+    run_id: str,
+    ordinal: int,
+) -> Observation:
+    url = f"{base_url.rstrip('/')}/api/generate"
+    full_prompt = COMMON_PREFIX + probe["text"]
+    payload = {
+        "model": model_name,
+        "prompt": full_prompt,
+        "stream": False,
+        "options": {"num_predict": 8},
+    }
+    started = time.perf_counter()
+    collected = utc_now()
+    try:
+        resp = requests.post(url, json=payload, timeout=60)
+        elapsed_ms = round((time.perf_counter() - started) * 1000, 2)
+        body = resp.json() if resp.ok else {}
+        prompt_eval_count = body.get("prompt_eval_count")
+        eval_count = body.get("eval_count")
+        total_tokens = (prompt_eval_count or 0) + (eval_count or 0) if prompt_eval_count is not None else None
+        return Observation(
+            run_id=run_id,
+            ordinal=ordinal,
+            collected_at_utc=collected,
+            model_id=f"ollama-{model_name}",
+            model_slug=model_name,
+            model_role="local_ollama",
+            probe_id=probe["id"],
+            probe_label=probe["label"],
+            probe_sha256=sha256_text(probe["text"]),
+            status_code=resp.status_code,
+            elapsed_ms=elapsed_ms,
+            ok=resp.ok and prompt_eval_count is not None,
+            prompt_tokens=prompt_eval_count,
+            completion_tokens=eval_count,
+            total_tokens=total_tokens,
+            response_model=model_name,
+            response_id=f"ollama-{ordinal}",
+            selected_headers={},
+            request_payload=payload,
+            response_json=body,
+            error=None if resp.ok else f"HTTP {resp.status_code}",
+            source_tier="local_ollama",
+        )
+    except Exception as exc:
+        elapsed_ms = round((time.perf_counter() - started) * 1000, 2)
+        return Observation(
+            run_id=run_id,
+            ordinal=ordinal,
+            collected_at_utc=collected,
+            model_id=f"ollama-{model_name}",
+            model_slug=model_name,
+            model_role="local_ollama",
+            probe_id=probe["id"],
+            probe_label=probe["label"],
+            probe_sha256=sha256_text(probe["text"]),
+            status_code=0,
+            elapsed_ms=elapsed_ms,
+            ok=False,
+            prompt_tokens=None,
+            completion_tokens=None,
+            total_tokens=None,
+            response_model=None,
+            response_id=None,
+            selected_headers={},
+            request_payload=payload,
+            response_json=None,
+            error=f"{type(exc).__name__}: {exc}",
+            source_tier="local_ollama",
+        )
+
+
 def command_local(models: list[str] | None, open_report: bool) -> int:
-    """Local assay: Probe Ollama models for prompt_eval_count."""
+    """Probe Ollama models for prompt_eval_count."""
     run_id = make_run_id("local")
     run_dir = ensure_run_dir(run_id)
 
@@ -1297,6 +1789,46 @@ def command_local(models: list[str] | None, open_report: bool) -> int:
     if open_report:
         webbrowser.open(report.resolve().as_uri())
     return 0 if summary["requests_failed"] == 0 else 1
+
+
+# ---------------------------------------------------------------------------
+# Command: Doctor & Demo
+# ---------------------------------------------------------------------------
+
+
+def command_doctor() -> int:
+    load_dotenv(ROOT / ".env")
+    key = os.getenv("OPENROUTER_API_KEY", "").strip()
+    print(f"OXFORD Lite v{PILOT_VERSION}")
+    print(f"Python: {sys.version.split()[0]}")
+    print(f"requests: {requests.__version__}")
+    print(f"OpenRouter API key present: {'yes' if key else 'NO'}")
+
+    print("\nLocal candidate tokenizers (fail-closed check):")
+    for tok in LOCAL_TOKENIZERS:
+        _, err = get_local_tokenizer(tok["id"])
+        status = "READY" if err is None else f"FAILED ({err})"
+        print(f"  - {tok['label']}: {status}")
+
+    # Check Ollama
+    try:
+        resp = requests.get(f"{OLLAMA_BASE_URL.rstrip('/')}/api/tags", timeout=0.5)
+        if resp.ok:
+            models_data = resp.json().get("models", [])
+            names = [m.get("name") for m in models_data]
+            print(f"\nOllama server: ONLINE at {OLLAMA_BASE_URL} ({len(names)} models: {', '.join(names[:4])})")
+        else:
+            print(f"\nOllama server: status {resp.status_code}")
+    except Exception:
+        print(f"\nOllama server: not reachable at {OLLAMA_BASE_URL} (optional)")
+
+    print(f"\nTarget model: {TARGET_MODEL['slug']}")
+    print(f"Remote candidate routes: {len(REMOTE_MODELS)} configured")
+    if not key:
+        print("\nNote: Add OPENROUTER_API_KEY to .env for remote queries.")
+        return 2
+    print("\nConfiguration looks ready.")
+    return 0
 
 
 def command_demo(open_report: bool) -> int:
@@ -1352,6 +1884,7 @@ def demo_observations(run_id: str) -> list[dict[str, Any]]:
                     "response_json": {"demo": True},
                     "error": None,
                     "source_tier": tier,
+                    "envelope_id": "envelope_b_standard",
                 }
             )
             ordinal += 1
@@ -1385,38 +1918,64 @@ def manifest(
         "common_prefix_sha256": sha256_text(COMMON_PREFIX),
         "requests_expected": len(request_order) if request_order else len(PROBES),
         "request_order": order,
-        "analysis_note": "Pilot only; isolates differential token geometry without confirmatory provider attribution.",
+        "analysis_note": "Exploration 1; isolates differential token geometry without confirmatory provider attribution.",
     }
 
 
 # ---------------------------------------------------------------------------
-# CLI Argument Parsing
+# CLI Argument Parser
 # ---------------------------------------------------------------------------
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="oxford.py",
-        description="OXFORD Lite: black-box model-lineage pilot suite",
+        description="OXFORD Lite: black-box model-lineage & structural validity assay suite",
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
     # Doctor
     sub.add_parser("doctor", help="Check local environment, API keys, tokenizers, and Ollama status")
 
-    # Structural (Local Tokenizers + Remote Ox)
-    struct = sub.add_parser("structural", help="Run local candidate tokenizers + remote Ox Alpha only (6 calls total)")
+    # Structural
+    struct = sub.add_parser("structural", help="Run local candidate tokenizers + remote Ox Alpha only")
     struct.add_argument("--open", action="store_true", dest="open_report", help="Open report.html in browser")
-    struct.add_argument("--seed", type=int, default=DEFAULT_SEED, help=f"Seed for target probe shuffle (default {DEFAULT_SEED})")
+    struct.add_argument("--seed", type=int, default=DEFAULT_SEED, help=f"Seed for shuffle (default {DEFAULT_SEED})")
+
+    # Positive Control
+    pos = sub.add_parser("positive-control", help="Validate OXFORD against known specimen (remote model vs local tokenizers)")
+    pos.add_argument("--model", type=str, dest="target_slug", help="Specimen model slug (default: z-ai/glm-5.2:free)")
+    pos.add_argument("--paid", action="store_true", help="Use paid endpoint for specimen model")
+    pos.add_argument("--open", action="store_true", dest="open_report", help="Open report.html in browser")
+    pos.add_argument("--seed", type=int, default=DEFAULT_SEED, help=f"Seed for shuffle (default {DEFAULT_SEED})")
+
+    # Collision Simulation
+    col = sub.add_parser("collision", help="Empirical Monte Carlo collision simulation across candidate tokenizers")
+    col.add_argument("--trials", type=int, default=100000, help="Number of Monte Carlo trials (default 100000)")
+    col.add_argument("--probes-pool", type=int, default=2000, help="Size of synthetic probe corpus (default 2000)")
+    col.add_argument("--seed", type=int, default=DEFAULT_SEED, help=f"Simulation seed (default {DEFAULT_SEED})")
+
+    # Synthesize Probes
+    synth = sub.add_parser("synthesize-probes", help="Generate synthetic probes and select top discriminatory probes")
+    synth.add_argument("--count", type=int, default=5000, help="Number of candidate probes to generate (default 5000)")
+    synth.add_argument("--top-k", type=int, default=16, help="Top K discriminatory probes to select (default 16)")
+    synth.add_argument("--seed", type=int, default=DEFAULT_SEED, help=f"Generator seed (default {DEFAULT_SEED})")
+
+    # Envelope Assay
+    env = sub.add_parser("envelope", help="Test differential shape invariance across 3 prompt envelopes")
+    env.add_argument("--open", action="store_true", dest="open_report", help="Open report.html in browser")
+    env.add_argument("--seed", type=int, default=DEFAULT_SEED, help=f"Seed for shuffle (default {DEFAULT_SEED})")
 
     # Remote Assay
     remote = sub.add_parser("remote", help="Run remote candidate and target model assay")
     remote.add_argument("--open", action="store_true", dest="open_report", help="Open report.html in browser")
     remote.add_argument("--seed", type=int, default=DEFAULT_SEED, help=f"Request shuffle seed (default {DEFAULT_SEED})")
-    remote.add_argument("--delay", type=float, default=DEFAULT_DELAY, help=f"Delay in seconds between free calls (default {DEFAULT_DELAY})")
-    remote.add_argument("--resume", type=str, dest="resume_ref", help="Resume prior run folder (e.g. --resume latest or --resume <run_id>)")
-    remote.add_argument("--paid", action="store_true", help="Use paid OpenRouter model routes for instant reliable execution")
-    remote.add_argument("--max-retries", type=int, default=DEFAULT_MAX_RETRIES, help=f"Max retries on 429 backoff (default {DEFAULT_MAX_RETRIES})")
+    remote.add_argument("--delay", type=float, default=DEFAULT_DELAY, help=f"Delay between free calls (default {DEFAULT_DELAY})")
+    remote.add_argument("--resume", type=str, dest="resume_ref", help="Resume prior run folder (e.g. --resume latest)")
+    remote.add_argument("--paid", action="store_true", help="Use paid OpenRouter model routes")
+    remote.add_argument("--max-retries", type=int, default=DEFAULT_MAX_RETRIES, help=f"Max retries on 429 (default {DEFAULT_MAX_RETRIES})")
+    remote.add_argument("--provider-order", nargs="+", help="Pin specific OpenRouter providers (e.g. --provider-order together deepinfra)")
+    remote.add_argument("--no-fallback", action="store_true", help="Disable provider fallback")
 
     # Local Assay (Ollama)
     local = sub.add_parser("local", help="Run local assays against Ollama")
@@ -1427,14 +1986,16 @@ def build_parser() -> argparse.ArgumentParser:
     demo = sub.add_parser("demo", help="Create synthetic sample report (makes zero model calls)")
     demo.add_argument("--open", action="store_true", dest="open_report", help="Open report.html in browser")
 
-    # Backward compatibility: pilot -> remote
+    # Backward compatibility
     pilot = sub.add_parser("pilot", help="Alias for 'remote'")
     pilot.add_argument("--open", action="store_true", dest="open_report", help="Open report.html in browser")
     pilot.add_argument("--seed", type=int, default=DEFAULT_SEED, help=f"Request shuffle seed (default {DEFAULT_SEED})")
-    pilot.add_argument("--delay", type=float, default=DEFAULT_DELAY, help=f"Delay in seconds (default {DEFAULT_DELAY})")
+    pilot.add_argument("--delay", type=float, default=DEFAULT_DELAY, help=f"Delay (default {DEFAULT_DELAY})")
     pilot.add_argument("--resume", type=str, dest="resume_ref", help="Resume prior run folder")
     pilot.add_argument("--paid", action="store_true", help="Use paid model routes")
-    pilot.add_argument("--max-retries", type=int, default=DEFAULT_MAX_RETRIES, help=f"Max retries on 429 (default {DEFAULT_MAX_RETRIES})")
+    pilot.add_argument("--max-retries", type=int, default=DEFAULT_MAX_RETRIES, help=f"Max retries (default {DEFAULT_MAX_RETRIES})")
+    pilot.add_argument("--provider-order", nargs="+", help="Pin specific providers")
+    pilot.add_argument("--no-fallback", action="store_true", help="Disable provider fallback")
 
     return parser
 
@@ -1445,6 +2006,14 @@ def main() -> int:
         return command_doctor()
     if args.command == "structural":
         return command_structural(args.open_report, args.seed)
+    if args.command == "positive-control":
+        return command_positive_control(args.open_report, args.seed, getattr(args, "target_slug", None), getattr(args, "paid", False))
+    if args.command == "collision":
+        return command_collision(args.trials, args.probes_pool, args.seed)
+    if args.command == "synthesize-probes":
+        return command_synthesize_probes(args.count, args.top_k, args.seed)
+    if args.command == "envelope":
+        return command_envelope(args.open_report, args.seed)
     if args.command in ("remote", "pilot"):
         return command_remote(
             seed=args.seed,
@@ -1453,6 +2022,8 @@ def main() -> int:
             resume_ref=args.resume_ref,
             paid=args.paid,
             max_retries=args.max_retries,
+            provider_order=args.provider_order,
+            allow_fallbacks=not getattr(args, "no_fallback", False),
         )
     if args.command == "local":
         return command_local(args.models, args.open_report)

@@ -1,0 +1,62 @@
+[
+  {
+    "id": "synth-p00647",
+    "label": "Synthetic Probe #00647",
+    "text": "p_00647_id::こんにちは世界 :: สวัสดีชาวโลก :: مرحبا بالعالم || flag🇺🇳|flag🇨🇳|flag🇺🇸|flag🇪🇺|flag🇯🇵 || ✨⚡🔥🌈☀️🌙⭐🌊::val_7438"
+  },
+  {
+    "id": "synth-p00998",
+    "label": "Synthetic Probe #00998",
+    "text": "p_00998_id::✨⚡🔥🌈☀️🌙⭐🌊 || こんにちは世界 :: สวัสดีชาวโลก :: مرحبا بالعالم || orbit🛰️|family👨‍👩‍👧‍👦|keycap7️⃣|flag🇰🇪::val_1996"
+  },
+  {
+    "id": "synth-p00087",
+    "label": "Synthetic Probe #00087",
+    "text": "p_00087_tok::flag🇺🇳|flag🇨🇳|flag🇺🇸|flag🇪🇺|flag🇯🇵 || こんにちは世界 :: สวัสดีชาวโลก :: مرحبا بالعالم || abababababababab  zzzzzzzzzzzz\tA__A__A__A\nEND::val_8382"
+  },
+  {
+    "id": "synth-p00268",
+    "label": "Synthetic Probe #00268",
+    "text": "p_00268_raw::flag🇺🇳|flag🇨🇳|flag🇺🇸|flag🇪🇺|flag🇯🇵 || orbit🛰️|family👨‍👩‍👧‍👦|keycap7️⃣|flag🇰🇪 || 中文テストالعربية—naïve—Привет::val_4780"
+  },
+  {
+    "id": "synth-p00808",
+    "label": "Synthetic Probe #00808",
+    "text": "p_00808_raw::0xDEADBEEF_CAFE_BABE_0123456789ABCDEF || urn:oxford:9f2c1d73-4a6b-48e1-a77d-00ff19ab73c2?x=17&y=A_B-C.D || https://api.internal.network:8443/v1/probes/raw?batch=42&mode=fast#anchor::val_4978"
+  },
+  {
+    "id": "synth-p00252",
+    "label": "Synthetic Probe #00252",
+    "text": "p_00252_id::Γειά σου Κόσμε :: Olá Mundo :: Привет мир || こんにちは世界 :: สวัสดีชาวโลก :: مرحبا بالعالم || flag🇺🇳|flag🇨🇳|flag🇺🇸|flag🇪🇺|flag🇯🇵::val_8280"
+  },
+  {
+    "id": "synth-p00078",
+    "label": "Synthetic Probe #00078",
+    "text": "p_00078_tok::https://api.internal.network:8443/v1/probes/raw?batch=42&mode=fast#anchor || urn:oxford:9f2c1d73-4a6b-48e1-a77d-00ff19ab73c2?x=17&y=A_B-C.D || pub fn compute_hash<T: Hash>(val: &T) -> [u8; 32] { sha256(val) }::val_9846"
+  },
+  {
+    "id": "synth-p00835",
+    "label": "Synthetic Probe #00835",
+    "text": "p_00835_fn::こんにちは世界 :: สวัสดีชาวโลก :: مرحبا بالعالم || München—Zürich—São Paulo—Reykjavík || flag🇺🇳|flag🇨🇳|flag🇺🇸|flag🇪🇺|flag🇯🇵::val_4725"
+  },
+  {
+    "id": "synth-p00126",
+    "label": "Synthetic Probe #00126",
+    "text": "p_00126_vec::München—Zürich—São Paulo—Reykjavík || orbit🛰️|family👨‍👩‍👧‍👦|keycap7️⃣|flag🇰🇪 || flag🇺🇳|flag🇨🇳|flag🇺🇸|flag🇪🇺|flag🇯🇵::val_7147"
+  },
+  {
+    "id": "synth-p00414",
+    "label": "Synthetic Probe #00414",
+    "text": "p_00414_raw::pub fn compute_hash<T: Hash>(val: &T) -> [u8; 32] { sha256(val) } || 0xDEADBEEF_CAFE_BABE_0123456789ABCDEF || urn:oxford:9f2c1d73-4a6b-48e1-a77d-00ff19ab73c2?x=17&y=A_B-C.D::val_3028"
+  },
+  {
+    "id": "synth-p00807",
+    "label": "Synthetic Probe #00807",
+    "text": "p_00807_id::urn:oxford:9f2c1d73-4a6b-48e1-a77d-00ff19ab73c2?x=17&y=A_B-C.D || ^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\\.[a-zA-Z0-9-.]+$ || https://api.internal.network:8443/v1/probes/raw?batch=42&mode=fast#anchor::val_9195"
+  },
+  {
+    "id": "synth-p00661",
+    "label": "Synthetic Probe #00661",
+    "text": "p_00661_vec::0xDEADBEEF_CAFE_BABE_0123456789ABCDEF || ^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\\.[a-zA-Z0-9-.]+$ || urn:oxford:9f2c1d73-4a6b-48e1-a77d-00ff19ab73c2?x=17&y=A_B-C.D::val_1935"
+  }
+]
