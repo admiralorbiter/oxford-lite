@@ -77,10 +77,32 @@ Probes with $\text{Score}(x) \approx 0$ (where all tokenizers produce identical 
 
 ## 5. Scientific & Epistemic Boundaries
 
-| Claim | Evidence Status in Exploration 1 |
+| Claim | Evidence Status in Exploration 1 & 2A |
 | :--- | :--- |
-| **Ox and GLM-5.2 share identical token-count geometry across tested probes** | **Observed directly** ($\text{MAE} = 0.00$ on 6/6 probes) |
+| **Ox and GLM-5.2 share identical token-count geometry across tested probes** | **Observed directly** ($\text{MAE} = 0.00$ on 6/6 and 12/12 probes) |
 | **Ox shares GLM-family tokenizer and vocabulary** | **Strongly supported** (confirmed by real local `zai-org/GLM-5.2` Rust tokenizer) |
-| **Ox is GLM-family rather than Qwen / Gemma / Llama / cl100k** | **Strongly supported** (unrelated families rejected with $\text{MAE} > 2.0$) |
+| **Ox is GLM-family rather than Qwen / Gemma / Llama / cl100k** | **Strongly supported** (unrelated families rejected with $\text{MAE} > 3.0$) |
 | **Ox is specifically GLM-5.2 vs GLM-5.3 / derivative** | **Open hypothesis** (requires behavioral and fine-grained vocab discrimination) |
+| **Ox displays intervention-consistent support revision on elementary holdouts** | **Observed directly** (48/48 exact decisions, 100% isomorphic stability) |
+| **Causal fingerprint discrimination across models** | **Pending Exploration 2A.2 candidate baseline sweep** |
 | **Inference host / endpoint operator identity** | **Unaddressed** (requires serving and latency fingerprinting) |
+
+---
+
+## 6. Exploration 2A: Causal Support Dynamics & Isomorphic Twins
+
+### Counterfactual Trajectory Formulation
+Rather than evaluating static prompt answers, Exploration 2A constructs an 8-condition causal intervention vector $F_M(W)$ across multi-path support environments $S(X) = \{\{A, B\}, \{C, D\}\}$:
+
+$$F_M(W) = [y_{\text{base}}, y_{-A}, y_{-C}, y_{-AC}, y_{-AB}, y_{-ABC}, y_{\text{rescue}}, y_{\text{sham}}]$$
+
+### Adversarially Isomorphic Invariance
+To establish that responses reflect formal logical topology rather than superficial entity or clause ordering cues, every world $W$ is paired with an isomorphic twin $W'$ featuring:
+- Randomized disjoint entity identifiers (`SIG_01`, `DRACO_82`)
+- Permuted fact presentation order
+- Inverted rule order and clause conjunctions ($B \land A$ vs $A \land B$)
+- Swapped logical path roles
+
+Within-model isomorphic stability is quantified as:
+$$\text{Stability}(M, W) = 1 - D(F_M(W), F_M(W'))$$
+

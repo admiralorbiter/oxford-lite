@@ -113,10 +113,64 @@ def generate_support_world(world_id: str, seed: int, is_twin: bool = False, twin
 
 
 def generate_isomorphic_twin(world: SupportWorld, seed: int) -> SupportWorld:
-    """Create an isomorphic twin with relabeled entities and permuted clause order."""
+    """Create an adversarially isomorphic twin with permuted rules, scrambled fact order, and randomized IDs."""
     twin_seed = seed ^ 0x5F3759DF
-    twin = generate_support_world(f"{world.world_id}_twin", twin_seed, is_twin=True, twin_of=world.world_id)
-    return twin
+    rng = random.Random(twin_seed)
+
+    # Disjoint entity prefixes
+    used_prefix = world.target_entity.split("_")[0]
+    available_prefixes = [p for p in ENTITY_PREFIXES if p != used_prefix]
+    entities = rng.sample(available_prefixes, 6)
+
+    target_ent = f"{entities[0]}_{rng.randint(10, 99)}"
+    inter_1 = f"{entities[1]}_{rng.randint(10, 99)}"
+    inter_2 = f"{entities[2]}_{rng.randint(10, 99)}"
+    distractor_ent = f"{entities[3]}_{rng.randint(10, 99)}"
+
+    available_props = [p for p in PROPERTY_NAMES if p != world.target_property]
+    prop = rng.choice(available_props)
+
+    # Scramble fact IDs
+    all_fids = [f"SIG_{i:02d}_{world.world_id}_twin" for i in range(1, 6)]
+    rng.shuffle(all_fids)
+
+    # Map logical roles to shuffled fact IDs
+    # Swap paths: Conduit becomes Path 1, Sector becomes Path 2
+    f_c1, f_c2 = all_fids[0], all_fids[1]  # Logical Path 1 in twin (was conduit)
+    f_s1, f_s2 = all_fids[2], all_fids[3]  # Logical Path 2 in twin (was sector)
+    f_dist = all_fids[4]                  # Distractor
+
+    # Permute phrasing and conjunction order
+    descriptions = {
+        f_c1: f"{target_ent} is linked to conduit {inter_2}.",
+        f_c2: f"Conduit {inter_2} satisfies primary resonance for {prop}.",
+        f_s1: f"{target_ent} is registered in sector {inter_1}.",
+        f_s2: f"Sector {inter_1} maintains valid cryptographic authorization for {prop}.",
+        f_dist: f"Telemetry array {distractor_ent} is synchronized to sub-band 4.",
+    }
+
+    # Shuffle the dictionary display order
+    items = list(descriptions.items())
+    rng.shuffle(items)
+    shuffled_descriptions = dict(items)
+
+    # Permuted rule presentation order and inner conjunction reversal
+    rule_1 = f"If conduit C satisfies primary resonance for P AND an entity is linked to conduit C, then that entity is P."
+    rule_2 = f"If sector S maintains cryptographic authorization for P AND an entity is registered in sector S, then that entity is P."
+
+    return SupportWorld(
+        world_id=f"{world.world_id}_twin",
+        target_entity=target_ent,
+        target_property=prop,
+        path_1_facts=[f_c1, f_c2],
+        path_2_facts=[f_s1, f_s2],
+        distractor_fact=f_dist,
+        fact_descriptions=shuffled_descriptions,
+        rule_1_desc=rule_1,
+        rule_2_desc=rule_2,
+        is_twin=True,
+        twin_of=world.world_id,
+    )
 
 
 def build_intervention_prompt(
@@ -136,17 +190,17 @@ def build_intervention_prompt(
     ]
     for fid, desc in world.fact_descriptions.items():
         lines.append(f"- [{fid}] {desc}")
-    
+
     if retracted:
         lines.append("\nUPDATED STATUS (RETRACTIONS):")
         for fid in retracted:
             lines.append(f"- [{fid}] HAS BEEN INVALIDATED AND RETRACTED.")
-            
+
     if restored:
         lines.append("\nCORRECTIONS (RESTORATIONS):")
         for fid in restored:
             lines.append(f"- [{fid}] HAS BEEN CONFIRMED RE-ESTABLISHED AND VALID.")
-            
+
     lines.extend([
         "",
         f"QUESTION: Is {world.target_entity} {world.target_property}?",
@@ -166,7 +220,7 @@ def generate_world_trajectory(world: SupportWorld) -> WorldTrajectory:
     f_a, f_b = world.path_1_facts
     f_c, f_d = world.path_2_facts
     f_e = world.distractor_fact
-    
+
     interventions = [
         TrajectoryIntervention(
             condition_id="c01_base",
@@ -234,7 +288,7 @@ def generate_world_trajectory(world: SupportWorld) -> WorldTrajectory:
             is_sham=True,
         ),
     ]
-    
+
     ground_truth = [item.expected_state for item in interventions]
     return WorldTrajectory(
         world=world,
@@ -244,24 +298,33 @@ def generate_world_trajectory(world: SupportWorld) -> WorldTrajectory:
 
 
 def parse_response_state(response_text: str | None) -> str:
-    """Normalize raw model response into discrete categorical state."""
+    """Strictly parse the model's final answer content token.
+
+    Requires explicit categorical output (ACTIVE, UNKNOWN, RETRACTED).
+    Returns FORMAT_FAILURE if the model failed to output a recognized state.
+    """
     if not response_text:
-        return "ERROR"
+        return "FORMAT_FAILURE"
+
     clean = response_text.strip().upper()
     tokens = [t.strip(".,;:!?\"'()[]{}*`#") for t in clean.split()]
-    # Scan from the end backwards to extract final answer token
+
+    # Clean single-word answer
+    if len(tokens) == 1 and tokens[0] in VALID_OUTPUTS:
+        return tokens[0]
+
+    # Scan from the very end of tokens backwards
     for tok in reversed(tokens):
         if tok in VALID_OUTPUTS:
             return tok
-    # Fallback substring inspection on tail
-    tail = clean[-200:] if len(clean) > 200 else clean
-    if "ACTIVE" in tail:
-        return "ACTIVE"
-    if "UNKNOWN" in tail:
-        return "UNKNOWN"
-    if "RETRACTED" in tail:
-        return "RETRACTED"
-    return "UNKNOWN_RESPONSE"
+
+    # Substring check on the last 40 characters
+    tail = clean[-40:] if len(clean) > 40 else clean
+    for v in ["ACTIVE", "UNKNOWN", "RETRACTED"]:
+        if v in tail:
+            return v
+
+    return "FORMAT_FAILURE"
 
 
 def trajectory_distance(vec_a: list[str], vec_b: list[str]) -> float:

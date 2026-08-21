@@ -1997,6 +1997,7 @@ def render_dynamics_html(
     run_id: str,
     results: list[dict[str, Any]],
     overall_accuracy: float,
+    mean_stability: float,
     retraction_sensitivity: float,
     survival_rate: float,
     rescue_rate: float,
@@ -2008,15 +2009,26 @@ def render_dynamics_html(
         w_id = html.escape(res["world_id"])
         target = html.escape(res["target"])
         obs_vec = res["observed_vector"]
+        twin_vec = res["twin_observed_vector"]
         gt_vec = res["ground_truth_vector"]
         acc = res["accuracy"]
+        stab = res["stability"]
 
-        cells = [f"<td><strong>{w_id}</strong><div class='small muted'>{target}</div></td>"]
+        # Base row
+        cells_base = [f"<td rowspan='2'><strong>{w_id}</strong><div class='small muted'>{target}</div></td>", "<td><span class='small muted'>Base (W)</span></td>"]
         for obs, exp in zip(obs_vec, gt_vec):
             cls = "badge-good" if obs == exp else "badge-bad"
-            cells.append(f"<td><span class='badge {cls}'>{html.escape(obs)}</span></td>")
-        cells.append(f"<td><strong>{acc * 100:.0f}%</strong></td>")
-        rows.append("<tr>" + "".join(cells) + "</tr>")
+            cells_base.append(f"<td><span class='badge {cls}'>{html.escape(obs)}</span></td>")
+        cells_base.append(f"<td rowspan='2'><strong>{acc * 100:.0f}%</strong></td>")
+        cells_base.append(f"<td rowspan='2'><strong>{stab * 100:.0f}%</strong></td>")
+        rows.append("<tr>" + "".join(cells_base) + "</tr>")
+
+        # Twin row
+        cells_twin = ["<td><span class='small muted'>Twin (W')</span></td>"]
+        for obs, exp in zip(twin_vec, gt_vec):
+            cls = "badge-good" if obs == exp else "badge-bad"
+            cells_twin.append(f"<td><span class='badge {cls}'>{html.escape(obs)}</span></td>")
+        rows.append("<tr style='background:rgba(0,0,0,0.015);'>" + "".join(cells_twin) + "</tr>")
 
     return f"""<!doctype html>
 <html lang="en">
@@ -2033,14 +2045,14 @@ body {{ margin:0; font-family:Inter, ui-sans-serif, system-ui, sans-serif; color
 .eyebrow {{ font-size:12px; letter-spacing:.14em; font-weight:800; opacity:.78; }}
 h1 {{ margin:8px 0 4px; font-size:34px; letter-spacing:-.04em; }}
 .sub {{ max-width:760px; color:#e0e7ff; line-height:1.55; }}
-.grid {{ display:grid; grid-template-columns:repeat(5,1fr); gap:14px; margin:18px 0; }}
-.card {{ background:var(--paper); border:1px solid var(--line); border-radius:16px; padding:18px; }}
-.card .k {{ color:var(--muted); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; }}
-.card .v {{ margin-top:7px; font-size:24px; font-weight:800; }}
+.grid {{ display:grid; grid-template-columns:repeat(6,1fr); gap:12px; margin:18px 0; }}
+.card {{ background:var(--paper); border:1px solid var(--line); border-radius:16px; padding:16px; }}
+.card .k {{ color:var(--muted); font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; }}
+.card .v {{ margin-top:6px; font-size:22px; font-weight:800; }}
 section {{ background:var(--paper); border:1px solid var(--line); border-radius:16px; margin-top:14px; padding:22px; }}
 table {{ width:100%; border-collapse:collapse; margin-top:14px; font-size:13px; }}
 th {{ text-align:left; color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.06em; padding:10px 8px; border-bottom:1px solid var(--line); }}
-td {{ padding:10px 8px; border-bottom:1px solid #eef0f3; vertical-align:middle; }}
+td {{ padding:8px; border-bottom:1px solid #eef0f3; vertical-align:middle; }}
 .badge {{ display:inline-block; padding:3px 7px; border-radius:6px; font-size:11px; font-weight:700; font-family:monospace; }}
 .badge-good {{ background:#dcfce7; color:var(--good); }}
 .badge-bad {{ background:#fee2e2; color:var(--bad); }}
@@ -2051,13 +2063,14 @@ td {{ padding:10px 8px; border-bottom:1px solid #eef0f3; vertical-align:middle; 
 <body>
 <div class="shell">
   <div class="hero">
-    <div class="eyebrow">OXFORD · EXPLORATION 2A</div>
+    <div class="eyebrow">OXFORD · EXPLORATION 2A.1</div>
     <h1>Causal Support Dynamics Fingerprint</h1>
-    <div class="sub">Counterfactual revision trajectories across 8 paired interventions (lesions, complete cuts, rescues, and sham controls).</div>
+    <div class="sub">Counterfactual revision trajectories across 8 paired interventions (lesions, cuts, rescues, shams) and isomorphic twin stability.</div>
   </div>
 
   <div class="grid">
-    <div class="card"><div class="k">Trajectory Accuracy</div><div class="v">{overall_accuracy * 100:.1f}%</div></div>
+    <div class="card"><div class="k">Accuracy</div><div class="v">{overall_accuracy * 100:.1f}%</div></div>
+    <div class="card"><div class="k">Isomorphic Stability</div><div class="v">{mean_stability * 100:.1f}%</div></div>
     <div class="card"><div class="k">Cut Sensitivity (-AC)</div><div class="v">{retraction_sensitivity * 100:.0f}%</div></div>
     <div class="card"><div class="k">Support Survival (-A)</div><div class="v">{survival_rate * 100:.0f}%</div></div>
     <div class="card"><div class="k">Rescue Rate (+A)</div><div class="v">{rescue_rate * 100:.0f}%</div></div>
@@ -2065,11 +2078,12 @@ td {{ padding:10px 8px; border-bottom:1px solid #eef0f3; vertical-align:middle; 
   </div>
 
   <section>
-    <h2>Observed Trajectory Response Vectors</h2>
+    <h2>Observed Trajectory Response Vectors &amp; Isomorphic Twins</h2>
     <table>
       <thead>
         <tr>
           <th>World</th>
+          <th>Variant</th>
           <th>Base (0)</th>
           <th>-A</th>
           <th>-C</th>
@@ -2079,6 +2093,7 @@ td {{ padding:10px 8px; border-bottom:1px solid #eef0f3; vertical-align:middle; 
           <th>+A (Rescue)</th>
           <th>-E (Sham)</th>
           <th>Accuracy</th>
+          <th>Stability</th>
         </tr>
       </thead>
       <tbody>{''.join(rows)}</tbody>
@@ -2095,7 +2110,7 @@ def command_dynamics_assay(
     holdout_file: str | None = None,
     target_slug: str = "stealth/ox-alpha",
 ) -> int:
-    """Execute Exploration 2A causal support dynamics assay against remote target."""
+    """Execute Exploration 2A causal support dynamics assay against target."""
     from assays import support_dynamics as sd
 
     load_dotenv(ROOT / ".env")
@@ -2115,43 +2130,48 @@ def command_dynamics_assay(
     run_id = make_run_id("dynamics")
     run_dir = ensure_run_dir(run_id)
 
-    print(f"OXFORD Exploration 2A: Causal Support Dynamics Assay")
+    target_id = target_slug.replace("/", "-").replace(":", "-")
+    target_info = {
+        "id": target_id,
+        "slug": target_slug,
+        "label": target_slug.split("/")[-1],
+        "role": "target",
+    }
+
+    print(f"OXFORD Exploration 2A.1: Causal Support Dynamics Assay")
     print(f"Target: {target_slug}")
-    print(f"Loaded {len(holdouts)} frozen holdout worlds (SHA-256={holdout_hash[:16]}...)")
+    print(f"Loaded {len(holdouts)} frozen holdout worlds with paired twins (SHA-256={holdout_hash[:16]}...)")
     print(f"Run folder: {run_dir}\n")
 
     session = requests.Session()
     attempts_file = run_dir / "raw" / "attempts.jsonl"
     observations: list[dict[str, Any]] = []
 
-    target_info = {
-        "id": "ox-alpha",
-        "slug": target_slug,
-        "label": "Ox Alpha",
-        "role": "target",
-    }
-
     world_results = []
     all_observed = []
     all_expected = []
+    stabilities = []
     ordinal = 1
 
     for w_idx, item in enumerate(holdouts, start=1):
-        w_data = item["world"]
-        world_obj = sd.SupportWorld(**w_data)
+        world_obj = sd.SupportWorld(**item["world"])
+        twin_obj = sd.SupportWorld(**item["twin"])
         traj_items = [sd.TrajectoryIntervention(**t) for t in item["trajectory"]]
+        twin_traj_items = [sd.TrajectoryIntervention(**t) for t in item["twin_trajectory"]]
         gt_vector = item["ground_truth"]
 
-        print(f"--- World [{w_idx}/{len(holdouts)}]: {world_obj.world_id} ({world_obj.target_entity} {world_obj.target_property}) ---")
-        observed_vector = []
+        print(f"=== World [{w_idx}/{len(holdouts)}]: {world_obj.world_id} ({world_obj.target_entity} {world_obj.target_property}) ===")
 
+        # 1. Base World Trajectory
+        print("  [Base World W]")
+        observed_vector = []
         for t_idx, interv in enumerate(traj_items, start=1):
             probe_dict = {
                 "id": f"{world_obj.world_id}_{interv.condition_id}",
                 "label": f"{world_obj.world_id} {interv.label}",
                 "text": interv.prompt_text,
             }
-            print(f"  [{t_idx:02d}/08] {interv.label} ... ", end="", flush=True)
+            print(f"    [{t_idx:02d}/08] {interv.label} ... ", end="", flush=True)
 
             obs = perform_request(
                 session,
@@ -2165,15 +2185,14 @@ def command_dynamics_assay(
                 on_attempt=lambda rec: append_jsonl(attempts_file, rec),
             )
             ordinal += 1
-            row = asdict(obs)
-            observations.append(row)
+            observations.append(asdict(obs))
 
+            # Strict final-answer extraction: only content is evaluated
             raw_resp = ""
             if obs.response_json and isinstance(obs.response_json, dict):
                 choices = obs.response_json.get("choices", [])
                 if choices:
-                    msg = choices[0].get("message", {})
-                    raw_resp = msg.get("content") or msg.get("reasoning") or ""
+                    raw_resp = choices[0].get("message", {}).get("content") or ""
 
             state = sd.parse_response_state(raw_resp)
             observed_vector.append(state)
@@ -2181,23 +2200,73 @@ def command_dynamics_assay(
             mark = "ok" if is_match else f"DIFF (got {state}, expected {interv.expected_state})"
             print(f"{mark} · {obs.elapsed_ms:.0f} ms")
 
-        acc = sd.trajectory_accuracy(observed_vector, gt_vector)
+        # 2. Isomorphic Twin Trajectory
+        print("  [Isomorphic Twin W']")
+        twin_observed_vector = []
+        for t_idx, interv in enumerate(twin_traj_items, start=1):
+            probe_dict = {
+                "id": f"{twin_obj.world_id}_{interv.condition_id}",
+                "label": f"{twin_obj.world_id} {interv.label}",
+                "text": interv.prompt_text,
+            }
+            print(f"    [{t_idx:02d}/08] {interv.label} (twin) ... ", end="", flush=True)
+
+            obs = perform_request(
+                session,
+                api_key,
+                run_id,
+                ordinal,
+                target_info,
+                probe_dict,
+                envelope_id="envelope_a_minimal",
+                max_tokens=1024,
+                on_attempt=lambda rec: append_jsonl(attempts_file, rec),
+            )
+            ordinal += 1
+            observations.append(asdict(obs))
+
+            raw_resp = ""
+            if obs.response_json and isinstance(obs.response_json, dict):
+                choices = obs.response_json.get("choices", [])
+                if choices:
+                    raw_resp = choices[0].get("message", {}).get("content") or ""
+
+            state = sd.parse_response_state(raw_resp)
+            twin_observed_vector.append(state)
+            is_match = state == interv.expected_state
+            mark = "ok" if is_match else f"DIFF (got {state}, expected {interv.expected_state})"
+            print(f"{mark} · {obs.elapsed_ms:.0f} ms")
+
+        acc_base = sd.trajectory_accuracy(observed_vector, gt_vector)
+        acc_twin = sd.trajectory_accuracy(twin_observed_vector, gt_vector)
+        mean_world_acc = (acc_base + acc_twin) / 2.0
+        stability = 1.0 - sd.trajectory_distance(observed_vector, twin_observed_vector)
+        stabilities.append(stability)
+
         all_observed.extend(observed_vector)
+        all_observed.extend(twin_observed_vector)
         all_expected.extend(gt_vector)
+        all_expected.extend(gt_vector)
+
+        print(f"  --> World {world_obj.world_id} Result: Base Acc={acc_base*100:.0f}%, Twin Acc={acc_twin*100:.0f}%, Isomorphic Stability={stability*100:.0f}%\n")
 
         world_results.append({
             "world_id": world_obj.world_id,
             "target": f"{world_obj.target_entity} {world_obj.target_property}",
             "observed_vector": observed_vector,
+            "twin_observed_vector": twin_observed_vector,
             "ground_truth_vector": gt_vector,
-            "accuracy": acc,
+            "accuracy": mean_world_acc,
+            "stability": stability,
         })
 
     total_acc = sd.trajectory_accuracy(all_observed, all_expected)
-    cut_acc = sum(1 for i, res in enumerate(world_results) for j, c in enumerate([3, 5]) if res["observed_vector"][c] == "UNKNOWN") / (len(world_results) * 2)
-    surv_acc = sum(1 for i, res in enumerate(world_results) for j, c in enumerate([1, 2, 4]) if res["observed_vector"][c] == "ACTIVE") / (len(world_results) * 3)
-    rescue_acc = sum(1 for res in world_results if res["observed_vector"][6] == "ACTIVE") / len(world_results)
-    sham_acc = sum(1 for res in world_results if res["observed_vector"][7] == "ACTIVE") / len(world_results)
+    mean_stab = statistics.fmean(stabilities) if stabilities else 1.0
+
+    cut_acc = sum(1 for res in world_results for vec in [res["observed_vector"], res["twin_observed_vector"]] for c in [3, 5] if vec[c] == "UNKNOWN") / (len(world_results) * 4)
+    surv_acc = sum(1 for res in world_results for vec in [res["observed_vector"], res["twin_observed_vector"]] for c in [1, 2, 4] if vec[c] == "ACTIVE") / (len(world_results) * 6)
+    rescue_acc = sum(1 for res in world_results for vec in [res["observed_vector"], res["twin_observed_vector"]] if vec[6] == "ACTIVE") / (len(world_results) * 2)
+    sham_acc = sum(1 for res in world_results for vec in [res["observed_vector"], res["twin_observed_vector"]] if vec[7] == "ACTIVE") / (len(world_results) * 2)
 
     manifest_data = {
         "run_id": run_id,
@@ -2206,7 +2275,7 @@ def command_dynamics_assay(
         "firewall_status": "HOLDOUT",
         "holdout_corpus_sha256": holdout_hash,
         "created_at_utc": utc_now(),
-        "total_trajectories": len(world_results),
+        "total_trajectories": len(world_results) * 2,
         "total_requests": len(observations),
     }
     write_json(run_dir / "manifest.json", manifest_data)
@@ -2216,6 +2285,7 @@ def command_dynamics_assay(
         "run_id": run_id,
         "target": target_slug,
         "overall_trajectory_accuracy": total_acc,
+        "within_model_isomorphic_stability": mean_stab,
         "cut_retraction_sensitivity": cut_acc,
         "alternative_support_survival": surv_acc,
         "rescue_recovery_rate": rescue_acc,
@@ -2224,19 +2294,20 @@ def command_dynamics_assay(
     }
     write_json(run_dir / "summary.json", summary)
 
-    report_html = render_dynamics_html(run_id, world_results, total_acc, cut_acc, surv_acc, rescue_acc, sham_acc)
+    report_html = render_dynamics_html(run_id, world_results, total_acc, mean_stab, cut_acc, surv_acc, rescue_acc, sham_acc)
     report_path = run_dir / "report.html"
     report_path.write_text(report_html, encoding="utf-8")
 
-    print("\n" + "=" * 60)
-    print("OXFORD EXPLORATION 2A: SUPPORT DYNAMICS RESULTS")
-    print("=" * 60)
-    print(f"Overall Trajectory Accuracy:      {total_acc * 100:.1f}%")
-    print(f"Complete Cut Sensitivity (-AC):   {cut_acc * 100:.1f}% (correctly dropped to UNKNOWN)")
-    print(f"Alternative Path Survival (-A):   {surv_acc * 100:.1f}% (correctly retained ACTIVE)")
-    print(f"Rescue Recovery Rate (+A):        {rescue_acc * 100:.1f}% (correctly re-activated)")
-    print(f"Sham Lexical Invariance (-E):     {sham_acc * 100:.1f}% (resisted false retraction)")
-    print("=" * 60)
+    print("=" * 65)
+    print("OXFORD EXPLORATION 2A.1: SUPPORT DYNAMICS HARDENED RESULTS")
+    print("=" * 65)
+    print(f"Overall Trajectory Accuracy:        {total_acc * 100:.1f}%")
+    print(f"Within-Model Isomorphic Stability:  {mean_stab * 100:.1f}% (invariance across permuted twins)")
+    print(f"Complete Cut Sensitivity (-AC):     {cut_acc * 100:.1f}% (correctly dropped to UNKNOWN)")
+    print(f"Alternative Path Survival (-A):     {surv_acc * 100:.1f}% (correctly retained ACTIVE)")
+    print(f"Rescue Recovery Rate (+A):          {rescue_acc * 100:.1f}% (correctly re-activated)")
+    print(f"Sham Lexical Invariance (-E):       {sham_acc * 100:.1f}% (resisted false retraction)")
+    print("=" * 65)
     print(f"HTML Report: {report_path}")
     if open_report:
         webbrowser.open(report_path.resolve().as_uri())
