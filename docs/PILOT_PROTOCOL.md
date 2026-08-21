@@ -43,7 +43,7 @@ $$\text{Collision}(k) = \mathbb{I}\left[ \left| \{ T_A(x_i) - T_B(x_i) \mid i \i
 - $P(\text{Collision} \mid k=6) \approx 0.00004$ ($1\text{ in }25,000$)
 - $P(\text{Collision} \mid k=12) < 10^{-5}$ ($< 1\text{ in }100,000$)
 
-Observing an exact 4-probe or 6-probe constant-offset alignment against an unrelated tokenizer family is statistically rejected ($p < 0.0001$).
+Under this empirical null conditional on our synthetic probe generator and tested tokenizer population, the observed collision frequency is approximately 0.16% for four probes ($k=4$) and 0.004% for six probes ($k=6$). This provides an empirical baseline collision frequency for unrelated tokenizers under our synthetic probe distribution.
 
 ---
 

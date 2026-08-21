@@ -89,7 +89,6 @@ LOCAL_TOKENIZERS: list[dict[str, str]] = [
         "label": "GLM-5.2 Tokenizer (Local)",
         "role": "candidate",
         "hf_model": "zai-org/GLM-5.2",
-        "hf_fallback": "THUDM/glm-4-9b-chat",
     },
     {
         "id": "qwen-local",
@@ -102,7 +101,6 @@ LOCAL_TOKENIZERS: list[dict[str, str]] = [
         "label": "Gemma Tokenizer (Local)",
         "role": "negative_control",
         "hf_model": "alpindale/gemma-2b",
-        "hf_fallback": "google/gemma-2-9b",
     },
     {
         "id": "cl100k-local",
@@ -364,20 +362,9 @@ def get_local_tokenizer(tokenizer_id: str) -> tuple[Any | None, str | None]:
             tok = Tokenizer.from_pretrained(hf_model)
             _TOKENIZER_CACHE[tokenizer_id] = ("tokenizers", tok)
             return _TOKENIZER_CACHE[tokenizer_id], None
-        except Exception as exc1:
-            fallback = tok_info.get("hf_fallback")
-            if fallback:
-                try:
-                    from tokenizers import Tokenizer  # type: ignore
-
-                    tok = Tokenizer.from_pretrained(fallback)
-                    _TOKENIZER_CACHE[tokenizer_id] = ("tokenizers", tok)
-                    return _TOKENIZER_CACHE[tokenizer_id], None
-                except Exception as exc2:
-                    _TOKENIZER_LOAD_FAILED.add(tokenizer_id)
-                    return None, f"Tokenizer load failed for '{hf_model}' and fallback '{fallback}': {exc2}"
+        except Exception as exc:
             _TOKENIZER_LOAD_FAILED.add(tokenizer_id)
-            return None, f"Tokenizer load failed for '{hf_model}': {exc1}"
+            return None, f"FAILED_TO_LOAD: {hf_model} ({exc})"
 
     _TOKENIZER_LOAD_FAILED.add(tokenizer_id)
     return None, f"No backend configured for tokenizer: {tokenizer_id}"
@@ -1348,25 +1335,50 @@ def command_synthesize_probes(count: int = 5000, top_k: int = 16, seed: int = DE
     tokenizer_ids = [t["id"] for t in LOCAL_TOKENIZERS]
     scored_probes = []
 
-    print(f"Calculating inter-tokenizer discrimination variance across {len(tokenizer_ids)} tokenizers...")
+    print(f"Calculating inter-tokenizer pairwise separation across {len(tokenizer_ids)} tokenizers...")
     for p in corpus:
-        counts = []
+        counts_dict: dict[str, int] = {}
         for tid in tokenizer_ids:
             c, err = count_tokens_local(tid, p["id"], p["text"])
             if c is not None and err is None:
-                counts.append(c)
-        if len(counts) >= 3:
-            var = statistics.variance(counts)
+                counts_dict[tid] = c
+
+        if len(counts_dict) == len(tokenizer_ids):
+            counts = list(counts_dict.values())
+            pair_diffs = [
+                abs(counts[i] - counts[j])
+                for i in range(len(counts))
+                for j in range(i + 1, len(counts))
+            ]
+            min_pair_diff = min(pair_diffs) if pair_diffs else 0
+            mean_diff = statistics.fmean(pair_diffs) if pair_diffs else 0
             span = max(counts) - min(counts)
+
+            # Measure separation specifically between GLM and other candidates
+            glm_count = counts_dict.get("glm-5.2-local")
+            glm_diffs = [
+                abs(glm_count - counts_dict[other_id])
+                for other_id in counts_dict
+                if other_id != "glm-5.2-local" and glm_count is not None
+            ]
+            glm_min_margin = min(glm_diffs) if glm_diffs else 0
+
+            # Composite separation score: prioritize non-zero minimum pairwise margin,
+            # then GLM candidate margin, then mean separation
+            score = (min_pair_diff * 100.0) + (glm_min_margin * 25.0) + (mean_diff * 2.0) + (span * 0.1)
+
             scored_probes.append({
                 "probe": p,
-                "counts": counts,
-                "variance": var,
+                "counts": counts_dict,
+                "score": score,
+                "min_pair_diff": min_pair_diff,
+                "glm_min_margin": glm_min_margin,
+                "mean_diff": mean_diff,
                 "span": span,
             })
 
-    # Sort descending by variance
-    scored_probes.sort(key=lambda x: x["variance"], reverse=True)
+    # Sort descending by composite separation score
+    scored_probes.sort(key=lambda x: x["score"], reverse=True)
     top_probes = [item["probe"] for item in scored_probes[:top_k]]
 
     PROBES_DIR.mkdir(parents=True, exist_ok=True)
@@ -1376,7 +1388,13 @@ def command_synthesize_probes(count: int = 5000, top_k: int = 16, seed: int = DE
     print(f"\nExtracted {len(top_probes)} high-information probes (saved to {out_file}):")
     for i, item in enumerate(scored_probes[:top_k], start=1):
         p = item["probe"]
-        print(f"  [{i:02d}] {p['id']}: variance={item['variance']:.2f}, span={item['span']} tokens | {p['text'][:60]}...")
+        cd = item["counts"]
+        print(
+            f"  [{i:02d}] {p['id']}: min_margin={item['min_pair_diff']}, "
+            f"GLM_margin={item['glm_min_margin']}, span={item['span']} | "
+            f"GLM={cd.get('glm-5.2-local')} Qwen={cd.get('qwen-local')} "
+            f"Gemma={cd.get('gemma-local')} cl100k={cd.get('cl100k-local')}"
+        )
     return 0
 
 
@@ -1483,18 +1501,30 @@ def command_envelope(open_report: bool, seed: int) -> int:
 # ---------------------------------------------------------------------------
 
 
-def command_structural(open_report: bool, seed: int) -> int:
-    """Structural assay: Local candidate tokenizers + remote Ox Alpha only (6 calls total)."""
+def command_structural(open_report: bool, seed: int, probes_file: str | None = None) -> int:
+    """Structural assay: Local candidate tokenizers + remote Ox Alpha only."""
     load_dotenv(ROOT / ".env")
     api_key = os.getenv("OPENROUTER_API_KEY", "").strip()
     if not api_key:
         print("Missing OPENROUTER_API_KEY. Add key to .env.", file=sys.stderr)
         return 2
 
+    probes = PROBES
+    if probes_file:
+        p_path = Path(probes_file)
+        if not p_path.is_absolute():
+            p_path = ROOT / probes_file
+        if p_path.exists():
+            probes = json.loads(p_path.read_text(encoding="utf-8"))
+            print(f"Loaded {len(probes)} probes from {p_path.name}")
+        else:
+            print(f"Probe file not found: {p_path}", file=sys.stderr)
+            return 2
+
     run_id = make_run_id("structural")
     run_dir = ensure_run_dir(run_id)
 
-    print(f"OXFORD Lite Structural Assay · {len(PROBES)} target requests")
+    print(f"OXFORD Lite Structural Assay · {len(probes)} target requests")
     print(f"Run folder: {run_dir}")
     print("Evaluating real local candidate tokenizers + querying Ox Alpha remotely...\n")
 
@@ -1503,7 +1533,7 @@ def command_structural(open_report: bool, seed: int) -> int:
 
     # 1. Local tokenizers
     for tok in LOCAL_TOKENIZERS:
-        for probe in PROBES:
+        for probe in probes:
             count, err = count_tokens_local(tok["id"], probe["id"], probe["text"])
             obs = Observation(
                 run_id=run_id,
@@ -1535,7 +1565,7 @@ def command_structural(open_report: bool, seed: int) -> int:
     # 2. Remote Ox Alpha queries
     session = requests.Session()
     rng = random.Random(seed)
-    shuffled_probes = list(PROBES)
+    shuffled_probes = list(probes)
     rng.shuffle(shuffled_probes)
 
     attempts_file = run_dir / "raw" / "attempts.jsonl"
@@ -1554,15 +1584,14 @@ def command_structural(open_report: bool, seed: int) -> int:
         row = asdict(obs)
         observations.append(row)
         ordinal += 1
-        save_run(run_dir, manifest(run_id, "structural_assay", seed, None), observations, analyze(observations, mode="structural"))
         if obs.ok:
             print(f"ok · prompt_tokens={obs.prompt_tokens} · {obs.elapsed_ms:.0f} ms")
         else:
             print(f"FAILED · {obs.status_code} · {obs.error}")
 
-    summary = analyze(observations, demo=False, mode="structural")
+    summary = analyze(observations, demo=False, mode="structural", probe_list=probes)
     run_manifest = manifest(run_id, "structural_assay", seed, None)
-    report = save_run(run_dir, run_manifest, observations, summary)
+    report = save_run(run_dir, run_manifest, observations, summary, probes)
     print_comparison_console(summary)
     print(f"\nHTML report: {report}")
     print(f"Raw observations: {run_dir / 'raw' / 'observations.jsonl'}")
@@ -1939,6 +1968,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     # Structural
     struct = sub.add_parser("structural", help="Run local candidate tokenizers + remote Ox Alpha only")
+    struct.add_argument("--probes", type=str, dest="probes_file", help="Path to custom probe JSON file")
     struct.add_argument("--open", action="store_true", dest="open_report", help="Open report.html in browser")
     struct.add_argument("--seed", type=int, default=DEFAULT_SEED, help=f"Seed for shuffle (default {DEFAULT_SEED})")
 
@@ -2005,7 +2035,7 @@ def main() -> int:
     if args.command == "doctor":
         return command_doctor()
     if args.command == "structural":
-        return command_structural(args.open_report, args.seed)
+        return command_structural(args.open_report, args.seed, getattr(args, "probes_file", None))
     if args.command == "positive-control":
         return command_positive_control(args.open_report, args.seed, getattr(args, "target_slug", None), getattr(args, "paid", False))
     if args.command == "collision":
