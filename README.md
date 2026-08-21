@@ -134,15 +134,15 @@ Rather than evaluating raw benchmark accuracy, Exploration 2A measures the **cou
 
 $$F_M(W) = [y_{\text{base}}, y_{-A}, y_{-C}, y_{-AC}, y_{-AB}, y_{-ABC}, y_{\text{rescue}}, y_{\text{sham}}]$$
 
-- **Isomorphic Twins**: Every base world has a paired twin $W'$ with relabeled entities and permuted clause order to test within-model stability.
-- **Lexical vs Causal Control (Sham)**: Retracts an unrelated distractor fact $E$ to separate true causal reasoning from superficial keyword sensitivity.
-- **Exploration Firewall**: Candidate worlds are synthesized and ranked locally; only top holdout worlds are frozen with SHA-256 commit hashes before querying Ox Alpha.
+- **Isomorphic Twins**: Every base world is paired with an adversarially permuted twin $W'$ (randomized fact IDs, shuffled presentation, reversed rules, and inverted conjunctions) to test within-model stability.
+- **Lexical vs Support Invariance (Sham)**: Retracts an unrelated distractor fact $E$ to separate true intervention-consistent support reasoning from superficial keyword sensitivity.
+- **Permanent Calibration Fixture**: Frozen as `support-dynamics-elementary-v1` (`worlds/holdout/support_dynamics_holdout.json`, SHA-256 committed before target evaluation).
 
 ### Run Dynamics Commands:
 
 ```bash
-# 1. Synthesize 30 candidate worlds and freeze top 8 holdouts
-python oxford.py dynamics-synthesize --count 30 --top-k 8
+# 1. Synthesize candidate worlds and freeze holdout fixture
+python oxford.py dynamics-synthesize --count 30 --top-k 3
 
 # 2. Run causal support dynamics assay against target
 python oxford.py dynamics-assay --open

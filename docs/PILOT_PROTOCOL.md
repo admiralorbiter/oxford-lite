@@ -36,14 +36,14 @@ To quantify the statistical significance of $k$ consecutive constant-offset matc
 $$\text{Collision}(k) = \mathbb{I}\left[ \left| \{ T_A(x_i) - T_B(x_i) \mid i \in \{1, \dots, k\} \} \right| = 1 \right]$$
 
 ### Empirical Findings
-- $P(\text{Collision} \mid k=1) = 1.000$ ($1\text{ in }1$)
-- $P(\text{Collision} \mid k=2) \approx 0.068$ ($1\text{ in }14$)
-- $P(\text{Collision} \mid k=3) \approx 0.0094$ ($1\text{ in }105$)
-- $P(\text{Collision} \mid k=4) \approx 0.0016$ ($1\text{ in }610$)
-- $P(\text{Collision} \mid k=6) \approx 0.00004$ ($1\text{ in }25,000$)
-- $P(\text{Collision} \mid k=12) < 10^{-5}$ ($< 1\text{ in }100,000$)
+- $\text{Collision Frequency}(k=1) = 1.000$ ($1\text{ in }1$)
+- $\text{Collision Frequency}(k=2) \approx 0.068$ ($1\text{ in }14$)
+- $\text{Collision Frequency}(k=3) \approx 0.0094$ ($1\text{ in }105$)
+- $\text{Collision Frequency}(k=4) \approx 0.0016$ ($1\text{ in }610$)
+- $\text{Collision Frequency}(k=6) \approx 0.00004$ ($1\text{ in }25,000$)
+- $\text{Collision Frequency}(k=12)$: 0 collisions in 100,000 Monte Carlo trials (empirical frequency 0, with an approximate 95% upper bound of $3 \times 10^{-5}$ by the rule-of-three, conditional on the tested tokenizer pairs and synthetic probe generator).
 
-Under this empirical null conditional on our synthetic probe generator and tested tokenizer population, the observed collision frequency is approximately 0.16% for four probes ($k=4$) and 0.004% for six probes ($k=6$). This provides an empirical baseline collision frequency for unrelated tokenizers under our synthetic probe distribution.
+Under this empirical null conditional on our synthetic probe generator and tested candidate tokenizer population, the observed collision frequency is approximately 0.16% for four probes ($k=4$) and 0.004% for six probes ($k=6$). This provides an empirical baseline collision frequency for unrelated tokenizers under our synthetic probe distribution.
 
 ---
 
@@ -61,17 +61,23 @@ Where:
 **Invariance Hypothesis**:
 $$\Delta T_{\text{target}}^{(e)}(x_i) = \Delta T_{\text{candidate\_local}}^{(e)}(x_i) \quad \forall e, i$$
 
-While the intercept $k_e$ shifts according to the token length of the envelope prefix, the content geometry $\Delta T(x_i)$ remains strictly invariant.
+While the intercept $k_e$ shifts according to the token length of the envelope prefix, the differential content geometry $\Delta T(x_i)$ remains strictly invariant.
 
 ---
 
 ## 4. High-Information Probe Optimization
 
-Instead of unguided probing, candidate strings $x$ are scored on the laptop across the candidate tokenizer set $\mathcal{T} = \{\text{GLM}, \text{Qwen}, \text{Gemma}, \text{Llama}, \text{cl100k}\}$:
+Instead of unguided probing, candidate strings $x$ are scored across the candidate tokenizer set $\mathcal{T} = \{\text{GLM-5.2}, \text{Qwen 2.5}, \text{Gemma}, \text{cl100k}, \text{o200k}\}$ using a composite pairwise separation objective:
 
-$$\text{Score}(x) = \operatorname{Var}\left( \{ T_t(x) \mid t \in \mathcal{T} \} \right)$$
+$$\text{Score}(x) = 0.35 \cdot \text{Margin}_{\min}(x) + 0.35 \cdot \text{Margin}_{\text{GLM}}(x) + 0.20 \cdot \text{Span}(x) + 0.10 \cdot \Delta_{\text{mean}}(x)$$
 
-Probes with $\text{Score}(x) \approx 0$ (where all tokenizers produce identical counts) are pruned. Only top-variance discriminatory probes are dispatched to remote target endpoints.
+where:
+- $\text{Margin}_{\min}(x) = \min_{A \neq B} |T_A(x) - T_B(x)|$ (minimum separation across any tokenizer pair)
+- $\text{Margin}_{\text{GLM}}(x) = \min_{B \neq \text{GLM}} |T_{\text{GLM}}(x) - T_B(x)|$ (minimum margin separating GLM from all alternatives)
+- $\text{Span}(x) = \max_{t} T_t(x) - \min_{t} T_t(x)$
+- $\Delta_{\text{mean}}(x) = \text{mean pairwise difference}$
+
+Probes with $\text{Score}(x) \approx 0$ (where candidate tokenizers produce identical counts) are pruned. Only top-ranked discriminatory probes are dispatched to remote target endpoints.
 
 ---
 
@@ -80,8 +86,8 @@ Probes with $\text{Score}(x) \approx 0$ (where all tokenizers produce identical 
 | Claim | Evidence Status in Exploration 1 & 2A |
 | :--- | :--- |
 | **Ox and GLM-5.2 share identical token-count geometry across tested probes** | **Observed directly** ($\text{MAE} = 0.00$ on 6/6 and 12/12 probes) |
-| **Ox shares GLM-family tokenizer and vocabulary** | **Strongly supported** (confirmed by real local `zai-org/GLM-5.2` Rust tokenizer) |
-| **Ox is GLM-family rather than Qwen / Gemma / Llama / cl100k** | **Strongly supported** (unrelated families rejected with $\text{MAE} > 3.0$) |
+| **Ox shares GLM-family tokenizer and vocabulary** | **Strongly supported among tested candidate families** (confirmed by real local `zai-org/GLM-5.2` Rust tokenizer) |
+| **Ox is GLM-family rather than Qwen / Gemma / cl100k / o200k** | **Strongly supported** (unrelated tested families rejected with $\text{MAE} > 3.0$) |
 | **Ox is specifically GLM-5.2 vs GLM-5.3 / derivative** | **Open hypothesis** (requires behavioral and fine-grained vocab discrimination) |
 | **Ox displays intervention-consistent support revision on elementary holdouts** | **Observed directly** (48/48 exact decisions, 100% isomorphic stability) |
 | **Causal fingerprint discrimination across models** | **Pending Exploration 2A.2 candidate baseline sweep** |
