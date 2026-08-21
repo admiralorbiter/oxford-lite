@@ -1,90 +1,112 @@
 # OXFORD Lite
 
-A deliberately small black-box model-lineage pilot for **Ox Alpha**.
+A black-box model-lineage and differential tokenization geometry assay suite for **Ox Alpha**.
 
-It makes **18 total OpenRouter requests** (6 fresh probes × 3 currently free
-models), saves the complete raw API observations, compares differential prompt-token structure, and produces a local HTML + Markdown report.
+OXFORD Lite isolates tokenization boundaries and structural signatures by comparing differential prompt-token counts:
+$$[T_{\text{target}}(x_i) - T_{\text{target}}(x_0)] \quad \text{vs} \quad [T_{\text{candidate}}(x_i) - T_{\text{candidate}}(x_0)]$$
 
-> **Pilot only.** This validates the experimental plumbing. It does not claim
-> that Ox Alpha is GLM, identify an exact checkpoint, or identify its provider.
+Under this formulation, any constant wrapper overhead $k$ (e.g. `$T_{\text{Ox}}(x) = T_{\text{GLM}}(x) + 75$`) cancels completely:
+$$[T_{\text{GLM}}(x_i) + k] - [T_{\text{GLM}}(x_0) + k] = T_{\text{GLM}}(x_i) - T_{\text{GLM}}(x_0)$$
 
-## What it tests
+---
 
-Default models:
+## Assay Architecture
 
-- `stealth/ox-alpha` — target
-- `z-ai/glm-5.2:free` — close-lineage candidate
-- `google/gemma-4-26b-a4b-it:free` — negative control
+```
+                    ┌───────────────────────────────┐
+                    │          OXFORD Lite          │
+                    └───────────────┬───────────────┘
+                                    │
+        ┌───────────────────────────┼───────────────────────────┐
+        ▼                           ▼                           ▼
+1. STRUCTURAL ASSAY         2. REMOTE ASSAY             3. LOCAL ASSAY
+- Local candidate           - Remote OpenRouter         - Local Ollama
+  tokenizers (GLM, Gemma,     endpoints                   models (Gemma,
+  Qwen, Tiktoken)           - Model-aware dispatch        Qwen)
+- Remote Ox Alpha ONLY        (no fixed delay penalty)  - Negative controls
+  (6 fast requests total)   - Resumable cells           - Behavioral micro-worlds
+- Immune to candidate         (`--resume latest`)       - Fast offline iteration
+  API rate limits           - `--paid` / `--free`
+                            - 429 jittered backoff
+```
 
-The key comparison is not absolute token counts. OXFORD Lite checks whether
-Ox and a candidate have the same *shape* across probes after constant wrapper
-overhead is removed.
+---
 
 ## Quick Start
 
-1. Install dependencies:
+1. **Install dependencies**:
    ```bash
    pip install -r requirements.txt
    ```
-2. Configure your OpenRouter API key:
-   - Copy `.env.example` to `.env` (e.g., `copy .env.example .env` on Windows or `cp .env.example .env` on Unix)
-   - Open `.env` and set `OPENROUTER_API_KEY=your_key_here`
-3. Verify configuration:
+2. **Configure API Key**:
+   - Copy `.env.example` to `.env` (e.g. `copy .env.example .env` on Windows).
+   - Set `OPENROUTER_API_KEY=sk-or-v1-...` in `.env`.
+3. **Run Doctor Check**:
    ```bash
    python oxford.py doctor
    ```
-4. Run synthetic demo (makes **zero API calls** and opens sample report):
+4. **Run the Structural Assay (Recommended - 6 Ox Alpha calls only)**:
    ```bash
-   python oxford.py demo --open
-   ```
-5. Run the 18-request pilot:
-   ```bash
-   python oxford.py pilot --open
+   python oxford.py structural --open
    ```
 
-Results appear under `runs/<timestamp>/` and the HTML report opens locally.
+---
 
-## Commands
+## Commands & Modes
 
-```text
-python oxford.py doctor       # configuration check; no model calls
-python oxford.py demo         # synthetic demo data; no model calls
-python oxford.py pilot        # real 18-request run
-python -m unittest discover -s tests   # local unit tests
+### 1. Structural Assay (`structural`)
+Runs local candidate tokenizers instantly in-memory, queries **only Ox Alpha** remotely across the probe corpus, and computes normalized differential shapes:
+```bash
+python oxford.py structural --open
 ```
 
-Useful options:
+### 2. Remote API Assay (`remote` or `pilot`)
+Runs remote target and candidate models with model-aware scheduling, provider pinning, and jittered 429 retry backoff:
+```bash
+# Standard run
+python oxford.py remote --open
 
-```text
-python oxford.py pilot --open
-python oxford.py pilot --seed 20260821
-python oxford.py pilot --delay 1.0
+# Resume a previous/interrupted run (executes only missing/failed cells)
+python oxford.py remote --resume latest --open
+
+# Use paid OpenRouter endpoints (bypasses free shared-pool congestion)
+python oxford.py remote --paid --open
 ```
 
-## Output
+### 3. Local Assay (`local`)
+Probes local Ollama models for prompt evaluation token counts:
+```bash
+python oxford.py local --models gemma2:9b qwen2.5:7b --open
+```
 
-Each run contains:
+### 4. Synthetic Demo (`demo`)
+Generates sample multi-tier reports with zero external calls:
+```bash
+python oxford.py demo --open
+```
 
-- `manifest.json` — frozen models, probes, request order, timestamp
-- `raw.jsonl` — one loss-minimized record per request including raw response
-- `summary.json` — parsed counts and pairwise structural comparisons
-- `report.md` — compact human-readable result
-- `report.html` — local visual dashboard
+### 5. Unit Tests
+```bash
+python -m unittest discover -s tests
+```
 
-## Free-use caveat
+---
 
-The configured model routes are free on OpenRouter as of **2026-08-21**, but
-availability and rate limits can change. The runner never silently swaps to a
-different model slug. Failed/rate-limited requests are recorded rather than
-hidden.
+## Run Artifacts
 
-Do not use sensitive data. The probes bundled here are entirely synthetic.
+Each assay produces structured run artifacts under `runs/<timestamp>-<mode>/`:
+- `manifest.json` — Frozen models, local tokenizers, probes, hashes, and configuration
+- `raw/observations.jsonl` — Loss-minimized per-cell observation logs including raw response payloads and headers
+- `summary.json` — Count matrices, normalized deltas, exact matches, and MAE rankings
+- `report.md` — Markdown summary report
+- `report.html` — Visual dashboard with interactive tables and tier badges
 
-## What comes next if this works
+---
 
-The full OXFORD study should add candidate-only probe optimization, more GLM
-family members, additional unrelated controls, provider-pinned replication,
-behavioral mutation assays, tool-use assays, multimodal structural probes,
-drift sentinels, and preregistered statistical decision rules.
+## Scientific Boundary
 
-See `docs/PILOT_PROTOCOL.md` for the exact scientific boundary of this pilot.
+- **Offset Invariance**: Constant wrapper overhead $k$ drops out under differential baseline subtraction.
+- **Probe Freshness**: The bundled probes are synthetic and do not copy public community fingerprint strings.
+- **Attribution Boundary**: A matching differential tokenization geometry indicates a shared tokenizer/vocab family, but does not identify a specific checkpoint, server operator, or provider without confirmatory behavioral and serving assays.
+
+See [`docs/PILOT_PROTOCOL.md`](file:///c:/Users/admir/Github/oxford-lite/docs/PILOT_PROTOCOL.md) for the complete scientific protocol.
