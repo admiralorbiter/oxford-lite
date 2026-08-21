@@ -1,0 +1,758 @@
+[
+  {
+    "world": {
+      "world_id": "w_000",
+      "target_entity": "VEGA_48",
+      "target_property": "TAU_BOUND",
+      "path_1_facts": [
+        "FACT_A_w_000",
+        "FACT_B_w_000"
+      ],
+      "path_2_facts": [
+        "FACT_C_w_000",
+        "FACT_D_w_000"
+      ],
+      "distractor_fact": "FACT_E_w_000",
+      "fact_descriptions": {
+        "FACT_A_w_000": "VEGA_48 is registered in sector KESTREL_43.",
+        "FACT_B_w_000": "Sector KESTREL_43 maintains valid cryptographic authorization for TAU_BOUND.",
+        "FACT_C_w_000": "VEGA_48 is linked to conduit PYXIS_94.",
+        "FACT_D_w_000": "Conduit PYXIS_94 satisfies primary resonance for TAU_BOUND.",
+        "FACT_E_w_000": "External telemetry node ZETA_33 is calibrated to channel 7."
+      },
+      "rule_1_desc": "If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.",
+      "rule_2_desc": "If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.",
+      "is_twin": false,
+      "twin_of": null
+    },
+    "twin": {
+      "world_id": "w_000_twin",
+      "target_entity": "VEGA_49",
+      "target_property": "PHASE_ALPHA",
+      "path_1_facts": [
+        "FACT_A_w_000_twin",
+        "FACT_B_w_000_twin"
+      ],
+      "path_2_facts": [
+        "FACT_C_w_000_twin",
+        "FACT_D_w_000_twin"
+      ],
+      "distractor_fact": "FACT_E_w_000_twin",
+      "fact_descriptions": {
+        "FACT_A_w_000_twin": "VEGA_49 is registered in sector ZETA_37.",
+        "FACT_B_w_000_twin": "Sector ZETA_37 maintains valid cryptographic authorization for PHASE_ALPHA.",
+        "FACT_C_w_000_twin": "VEGA_49 is linked to conduit LYRA_11.",
+        "FACT_D_w_000_twin": "Conduit LYRA_11 satisfies primary resonance for PHASE_ALPHA.",
+        "FACT_E_w_000_twin": "External telemetry node RAX_68 is calibrated to channel 7."
+      },
+      "rule_1_desc": "If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.",
+      "rule_2_desc": "If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.",
+      "is_twin": true,
+      "twin_of": "w_000"
+    },
+    "trajectory": [
+      {
+        "condition_id": "c01_base",
+        "label": "Base full support",
+        "retracted_facts": [],
+        "restored_facts": [],
+        "expected_state": "ACTIVE",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_000] VEGA_48 is registered in sector KESTREL_43.\n- [FACT_B_w_000] Sector KESTREL_43 maintains valid cryptographic authorization for TAU_BOUND.\n- [FACT_C_w_000] VEGA_48 is linked to conduit PYXIS_94.\n- [FACT_D_w_000] Conduit PYXIS_94 satisfies primary resonance for TAU_BOUND.\n- [FACT_E_w_000] External telemetry node ZETA_33 is calibrated to channel 7.\n\nQUESTION: Is VEGA_48 TAU_BOUND?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": false
+      },
+      {
+        "condition_id": "c02_lesion_a",
+        "label": "Single lesion (-A)",
+        "retracted_facts": [
+          "FACT_A_w_000"
+        ],
+        "restored_facts": [],
+        "expected_state": "ACTIVE",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_000] VEGA_48 is registered in sector KESTREL_43.\n- [FACT_B_w_000] Sector KESTREL_43 maintains valid cryptographic authorization for TAU_BOUND.\n- [FACT_C_w_000] VEGA_48 is linked to conduit PYXIS_94.\n- [FACT_D_w_000] Conduit PYXIS_94 satisfies primary resonance for TAU_BOUND.\n- [FACT_E_w_000] External telemetry node ZETA_33 is calibrated to channel 7.\n\nUPDATED STATUS (RETRACTIONS):\n- [FACT_A_w_000] HAS BEEN INVALIDATED AND RETRACTED.\n\nQUESTION: Is VEGA_48 TAU_BOUND?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": false
+      },
+      {
+        "condition_id": "c03_lesion_c",
+        "label": "Single lesion (-C)",
+        "retracted_facts": [
+          "FACT_C_w_000"
+        ],
+        "restored_facts": [],
+        "expected_state": "ACTIVE",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_000] VEGA_48 is registered in sector KESTREL_43.\n- [FACT_B_w_000] Sector KESTREL_43 maintains valid cryptographic authorization for TAU_BOUND.\n- [FACT_C_w_000] VEGA_48 is linked to conduit PYXIS_94.\n- [FACT_D_w_000] Conduit PYXIS_94 satisfies primary resonance for TAU_BOUND.\n- [FACT_E_w_000] External telemetry node ZETA_33 is calibrated to channel 7.\n\nUPDATED STATUS (RETRACTIONS):\n- [FACT_C_w_000] HAS BEEN INVALIDATED AND RETRACTED.\n\nQUESTION: Is VEGA_48 TAU_BOUND?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": false
+      },
+      {
+        "condition_id": "c04_cut_ac",
+        "label": "Complete cut (-A, -C)",
+        "retracted_facts": [
+          "FACT_A_w_000",
+          "FACT_C_w_000"
+        ],
+        "restored_facts": [],
+        "expected_state": "UNKNOWN",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_000] VEGA_48 is registered in sector KESTREL_43.\n- [FACT_B_w_000] Sector KESTREL_43 maintains valid cryptographic authorization for TAU_BOUND.\n- [FACT_C_w_000] VEGA_48 is linked to conduit PYXIS_94.\n- [FACT_D_w_000] Conduit PYXIS_94 satisfies primary resonance for TAU_BOUND.\n- [FACT_E_w_000] External telemetry node ZETA_33 is calibrated to channel 7.\n\nUPDATED STATUS (RETRACTIONS):\n- [FACT_A_w_000] HAS BEEN INVALIDATED AND RETRACTED.\n- [FACT_C_w_000] HAS BEEN INVALIDATED AND RETRACTED.\n\nQUESTION: Is VEGA_48 TAU_BOUND?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": false
+      },
+      {
+        "condition_id": "c05_path_ab",
+        "label": "Path destruction (-A, -B)",
+        "retracted_facts": [
+          "FACT_A_w_000",
+          "FACT_B_w_000"
+        ],
+        "restored_facts": [],
+        "expected_state": "ACTIVE",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_000] VEGA_48 is registered in sector KESTREL_43.\n- [FACT_B_w_000] Sector KESTREL_43 maintains valid cryptographic authorization for TAU_BOUND.\n- [FACT_C_w_000] VEGA_48 is linked to conduit PYXIS_94.\n- [FACT_D_w_000] Conduit PYXIS_94 satisfies primary resonance for TAU_BOUND.\n- [FACT_E_w_000] External telemetry node ZETA_33 is calibrated to channel 7.\n\nUPDATED STATUS (RETRACTIONS):\n- [FACT_A_w_000] HAS BEEN INVALIDATED AND RETRACTED.\n- [FACT_B_w_000] HAS BEEN INVALIDATED AND RETRACTED.\n\nQUESTION: Is VEGA_48 TAU_BOUND?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": false
+      },
+      {
+        "condition_id": "c06_total_abc",
+        "label": "Total support loss (-A, -B, -C)",
+        "retracted_facts": [
+          "FACT_A_w_000",
+          "FACT_B_w_000",
+          "FACT_C_w_000"
+        ],
+        "restored_facts": [],
+        "expected_state": "UNKNOWN",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_000] VEGA_48 is registered in sector KESTREL_43.\n- [FACT_B_w_000] Sector KESTREL_43 maintains valid cryptographic authorization for TAU_BOUND.\n- [FACT_C_w_000] VEGA_48 is linked to conduit PYXIS_94.\n- [FACT_D_w_000] Conduit PYXIS_94 satisfies primary resonance for TAU_BOUND.\n- [FACT_E_w_000] External telemetry node ZETA_33 is calibrated to channel 7.\n\nUPDATED STATUS (RETRACTIONS):\n- [FACT_A_w_000] HAS BEEN INVALIDATED AND RETRACTED.\n- [FACT_B_w_000] HAS BEEN INVALIDATED AND RETRACTED.\n- [FACT_C_w_000] HAS BEEN INVALIDATED AND RETRACTED.\n\nQUESTION: Is VEGA_48 TAU_BOUND?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": false
+      },
+      {
+        "condition_id": "c07_rescue_a",
+        "label": "Rescue (+A after cut)",
+        "retracted_facts": [
+          "FACT_A_w_000",
+          "FACT_C_w_000"
+        ],
+        "restored_facts": [
+          "FACT_A_w_000"
+        ],
+        "expected_state": "ACTIVE",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_000] VEGA_48 is registered in sector KESTREL_43.\n- [FACT_B_w_000] Sector KESTREL_43 maintains valid cryptographic authorization for TAU_BOUND.\n- [FACT_C_w_000] VEGA_48 is linked to conduit PYXIS_94.\n- [FACT_D_w_000] Conduit PYXIS_94 satisfies primary resonance for TAU_BOUND.\n- [FACT_E_w_000] External telemetry node ZETA_33 is calibrated to channel 7.\n\nUPDATED STATUS (RETRACTIONS):\n- [FACT_A_w_000] HAS BEEN INVALIDATED AND RETRACTED.\n- [FACT_C_w_000] HAS BEEN INVALIDATED AND RETRACTED.\n\nCORRECTIONS (RESTORATIONS):\n- [FACT_A_w_000] HAS BEEN CONFIRMED RE-ESTABLISHED AND VALID.\n\nQUESTION: Is VEGA_48 TAU_BOUND?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": false
+      },
+      {
+        "condition_id": "c08_sham_e",
+        "label": "Sham distractor lesion (-E)",
+        "retracted_facts": [
+          "FACT_E_w_000"
+        ],
+        "restored_facts": [],
+        "expected_state": "ACTIVE",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_000] VEGA_48 is registered in sector KESTREL_43.\n- [FACT_B_w_000] Sector KESTREL_43 maintains valid cryptographic authorization for TAU_BOUND.\n- [FACT_C_w_000] VEGA_48 is linked to conduit PYXIS_94.\n- [FACT_D_w_000] Conduit PYXIS_94 satisfies primary resonance for TAU_BOUND.\n- [FACT_E_w_000] External telemetry node ZETA_33 is calibrated to channel 7.\n\nUPDATED STATUS (RETRACTIONS):\n- [FACT_E_w_000] HAS BEEN INVALIDATED AND RETRACTED.\n\nQUESTION: Is VEGA_48 TAU_BOUND?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": true
+      }
+    ],
+    "twin_trajectory": [
+      {
+        "condition_id": "c01_base",
+        "label": "Base full support",
+        "retracted_facts": [],
+        "restored_facts": [],
+        "expected_state": "ACTIVE",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_000_twin] VEGA_49 is registered in sector ZETA_37.\n- [FACT_B_w_000_twin] Sector ZETA_37 maintains valid cryptographic authorization for PHASE_ALPHA.\n- [FACT_C_w_000_twin] VEGA_49 is linked to conduit LYRA_11.\n- [FACT_D_w_000_twin] Conduit LYRA_11 satisfies primary resonance for PHASE_ALPHA.\n- [FACT_E_w_000_twin] External telemetry node RAX_68 is calibrated to channel 7.\n\nQUESTION: Is VEGA_49 PHASE_ALPHA?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": false
+      },
+      {
+        "condition_id": "c02_lesion_a",
+        "label": "Single lesion (-A)",
+        "retracted_facts": [
+          "FACT_A_w_000_twin"
+        ],
+        "restored_facts": [],
+        "expected_state": "ACTIVE",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_000_twin] VEGA_49 is registered in sector ZETA_37.\n- [FACT_B_w_000_twin] Sector ZETA_37 maintains valid cryptographic authorization for PHASE_ALPHA.\n- [FACT_C_w_000_twin] VEGA_49 is linked to conduit LYRA_11.\n- [FACT_D_w_000_twin] Conduit LYRA_11 satisfies primary resonance for PHASE_ALPHA.\n- [FACT_E_w_000_twin] External telemetry node RAX_68 is calibrated to channel 7.\n\nUPDATED STATUS (RETRACTIONS):\n- [FACT_A_w_000_twin] HAS BEEN INVALIDATED AND RETRACTED.\n\nQUESTION: Is VEGA_49 PHASE_ALPHA?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": false
+      },
+      {
+        "condition_id": "c03_lesion_c",
+        "label": "Single lesion (-C)",
+        "retracted_facts": [
+          "FACT_C_w_000_twin"
+        ],
+        "restored_facts": [],
+        "expected_state": "ACTIVE",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_000_twin] VEGA_49 is registered in sector ZETA_37.\n- [FACT_B_w_000_twin] Sector ZETA_37 maintains valid cryptographic authorization for PHASE_ALPHA.\n- [FACT_C_w_000_twin] VEGA_49 is linked to conduit LYRA_11.\n- [FACT_D_w_000_twin] Conduit LYRA_11 satisfies primary resonance for PHASE_ALPHA.\n- [FACT_E_w_000_twin] External telemetry node RAX_68 is calibrated to channel 7.\n\nUPDATED STATUS (RETRACTIONS):\n- [FACT_C_w_000_twin] HAS BEEN INVALIDATED AND RETRACTED.\n\nQUESTION: Is VEGA_49 PHASE_ALPHA?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": false
+      },
+      {
+        "condition_id": "c04_cut_ac",
+        "label": "Complete cut (-A, -C)",
+        "retracted_facts": [
+          "FACT_A_w_000_twin",
+          "FACT_C_w_000_twin"
+        ],
+        "restored_facts": [],
+        "expected_state": "UNKNOWN",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_000_twin] VEGA_49 is registered in sector ZETA_37.\n- [FACT_B_w_000_twin] Sector ZETA_37 maintains valid cryptographic authorization for PHASE_ALPHA.\n- [FACT_C_w_000_twin] VEGA_49 is linked to conduit LYRA_11.\n- [FACT_D_w_000_twin] Conduit LYRA_11 satisfies primary resonance for PHASE_ALPHA.\n- [FACT_E_w_000_twin] External telemetry node RAX_68 is calibrated to channel 7.\n\nUPDATED STATUS (RETRACTIONS):\n- [FACT_A_w_000_twin] HAS BEEN INVALIDATED AND RETRACTED.\n- [FACT_C_w_000_twin] HAS BEEN INVALIDATED AND RETRACTED.\n\nQUESTION: Is VEGA_49 PHASE_ALPHA?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": false
+      },
+      {
+        "condition_id": "c05_path_ab",
+        "label": "Path destruction (-A, -B)",
+        "retracted_facts": [
+          "FACT_A_w_000_twin",
+          "FACT_B_w_000_twin"
+        ],
+        "restored_facts": [],
+        "expected_state": "ACTIVE",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_000_twin] VEGA_49 is registered in sector ZETA_37.\n- [FACT_B_w_000_twin] Sector ZETA_37 maintains valid cryptographic authorization for PHASE_ALPHA.\n- [FACT_C_w_000_twin] VEGA_49 is linked to conduit LYRA_11.\n- [FACT_D_w_000_twin] Conduit LYRA_11 satisfies primary resonance for PHASE_ALPHA.\n- [FACT_E_w_000_twin] External telemetry node RAX_68 is calibrated to channel 7.\n\nUPDATED STATUS (RETRACTIONS):\n- [FACT_A_w_000_twin] HAS BEEN INVALIDATED AND RETRACTED.\n- [FACT_B_w_000_twin] HAS BEEN INVALIDATED AND RETRACTED.\n\nQUESTION: Is VEGA_49 PHASE_ALPHA?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": false
+      },
+      {
+        "condition_id": "c06_total_abc",
+        "label": "Total support loss (-A, -B, -C)",
+        "retracted_facts": [
+          "FACT_A_w_000_twin",
+          "FACT_B_w_000_twin",
+          "FACT_C_w_000_twin"
+        ],
+        "restored_facts": [],
+        "expected_state": "UNKNOWN",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_000_twin] VEGA_49 is registered in sector ZETA_37.\n- [FACT_B_w_000_twin] Sector ZETA_37 maintains valid cryptographic authorization for PHASE_ALPHA.\n- [FACT_C_w_000_twin] VEGA_49 is linked to conduit LYRA_11.\n- [FACT_D_w_000_twin] Conduit LYRA_11 satisfies primary resonance for PHASE_ALPHA.\n- [FACT_E_w_000_twin] External telemetry node RAX_68 is calibrated to channel 7.\n\nUPDATED STATUS (RETRACTIONS):\n- [FACT_A_w_000_twin] HAS BEEN INVALIDATED AND RETRACTED.\n- [FACT_B_w_000_twin] HAS BEEN INVALIDATED AND RETRACTED.\n- [FACT_C_w_000_twin] HAS BEEN INVALIDATED AND RETRACTED.\n\nQUESTION: Is VEGA_49 PHASE_ALPHA?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": false
+      },
+      {
+        "condition_id": "c07_rescue_a",
+        "label": "Rescue (+A after cut)",
+        "retracted_facts": [
+          "FACT_A_w_000_twin",
+          "FACT_C_w_000_twin"
+        ],
+        "restored_facts": [
+          "FACT_A_w_000_twin"
+        ],
+        "expected_state": "ACTIVE",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_000_twin] VEGA_49 is registered in sector ZETA_37.\n- [FACT_B_w_000_twin] Sector ZETA_37 maintains valid cryptographic authorization for PHASE_ALPHA.\n- [FACT_C_w_000_twin] VEGA_49 is linked to conduit LYRA_11.\n- [FACT_D_w_000_twin] Conduit LYRA_11 satisfies primary resonance for PHASE_ALPHA.\n- [FACT_E_w_000_twin] External telemetry node RAX_68 is calibrated to channel 7.\n\nUPDATED STATUS (RETRACTIONS):\n- [FACT_A_w_000_twin] HAS BEEN INVALIDATED AND RETRACTED.\n- [FACT_C_w_000_twin] HAS BEEN INVALIDATED AND RETRACTED.\n\nCORRECTIONS (RESTORATIONS):\n- [FACT_A_w_000_twin] HAS BEEN CONFIRMED RE-ESTABLISHED AND VALID.\n\nQUESTION: Is VEGA_49 PHASE_ALPHA?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": false
+      },
+      {
+        "condition_id": "c08_sham_e",
+        "label": "Sham distractor lesion (-E)",
+        "retracted_facts": [
+          "FACT_E_w_000_twin"
+        ],
+        "restored_facts": [],
+        "expected_state": "ACTIVE",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_000_twin] VEGA_49 is registered in sector ZETA_37.\n- [FACT_B_w_000_twin] Sector ZETA_37 maintains valid cryptographic authorization for PHASE_ALPHA.\n- [FACT_C_w_000_twin] VEGA_49 is linked to conduit LYRA_11.\n- [FACT_D_w_000_twin] Conduit LYRA_11 satisfies primary resonance for PHASE_ALPHA.\n- [FACT_E_w_000_twin] External telemetry node RAX_68 is calibrated to channel 7.\n\nUPDATED STATUS (RETRACTIONS):\n- [FACT_E_w_000_twin] HAS BEEN INVALIDATED AND RETRACTED.\n\nQUESTION: Is VEGA_49 PHASE_ALPHA?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": true
+      }
+    ],
+    "ground_truth": [
+      "ACTIVE",
+      "ACTIVE",
+      "ACTIVE",
+      "UNKNOWN",
+      "ACTIVE",
+      "UNKNOWN",
+      "ACTIVE",
+      "ACTIVE"
+    ]
+  },
+  {
+    "world": {
+      "world_id": "w_001",
+      "target_entity": "KESTREL_41",
+      "target_property": "OMEGA_ALIGNED",
+      "path_1_facts": [
+        "FACT_A_w_001",
+        "FACT_B_w_001"
+      ],
+      "path_2_facts": [
+        "FACT_C_w_001",
+        "FACT_D_w_001"
+      ],
+      "distractor_fact": "FACT_E_w_001",
+      "fact_descriptions": {
+        "FACT_A_w_001": "KESTREL_41 is registered in sector VELORA_87.",
+        "FACT_B_w_001": "Sector VELORA_87 maintains valid cryptographic authorization for OMEGA_ALIGNED.",
+        "FACT_C_w_001": "KESTREL_41 is linked to conduit VORTEX_96.",
+        "FACT_D_w_001": "Conduit VORTEX_96 satisfies primary resonance for OMEGA_ALIGNED.",
+        "FACT_E_w_001": "External telemetry node QUASAR_63 is calibrated to channel 7."
+      },
+      "rule_1_desc": "If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.",
+      "rule_2_desc": "If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.",
+      "is_twin": false,
+      "twin_of": null
+    },
+    "twin": {
+      "world_id": "w_001_twin",
+      "target_entity": "QUASAR_35",
+      "target_property": "EPSILON_REACTIVE",
+      "path_1_facts": [
+        "FACT_A_w_001_twin",
+        "FACT_B_w_001_twin"
+      ],
+      "path_2_facts": [
+        "FACT_C_w_001_twin",
+        "FACT_D_w_001_twin"
+      ],
+      "distractor_fact": "FACT_E_w_001_twin",
+      "fact_descriptions": {
+        "FACT_A_w_001_twin": "QUASAR_35 is registered in sector VELORA_88.",
+        "FACT_B_w_001_twin": "Sector VELORA_88 maintains valid cryptographic authorization for EPSILON_REACTIVE.",
+        "FACT_C_w_001_twin": "QUASAR_35 is linked to conduit ZETA_70.",
+        "FACT_D_w_001_twin": "Conduit ZETA_70 satisfies primary resonance for EPSILON_REACTIVE.",
+        "FACT_E_w_001_twin": "External telemetry node SOLARIS_10 is calibrated to channel 7."
+      },
+      "rule_1_desc": "If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.",
+      "rule_2_desc": "If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.",
+      "is_twin": true,
+      "twin_of": "w_001"
+    },
+    "trajectory": [
+      {
+        "condition_id": "c01_base",
+        "label": "Base full support",
+        "retracted_facts": [],
+        "restored_facts": [],
+        "expected_state": "ACTIVE",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_001] KESTREL_41 is registered in sector VELORA_87.\n- [FACT_B_w_001] Sector VELORA_87 maintains valid cryptographic authorization for OMEGA_ALIGNED.\n- [FACT_C_w_001] KESTREL_41 is linked to conduit VORTEX_96.\n- [FACT_D_w_001] Conduit VORTEX_96 satisfies primary resonance for OMEGA_ALIGNED.\n- [FACT_E_w_001] External telemetry node QUASAR_63 is calibrated to channel 7.\n\nQUESTION: Is KESTREL_41 OMEGA_ALIGNED?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": false
+      },
+      {
+        "condition_id": "c02_lesion_a",
+        "label": "Single lesion (-A)",
+        "retracted_facts": [
+          "FACT_A_w_001"
+        ],
+        "restored_facts": [],
+        "expected_state": "ACTIVE",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_001] KESTREL_41 is registered in sector VELORA_87.\n- [FACT_B_w_001] Sector VELORA_87 maintains valid cryptographic authorization for OMEGA_ALIGNED.\n- [FACT_C_w_001] KESTREL_41 is linked to conduit VORTEX_96.\n- [FACT_D_w_001] Conduit VORTEX_96 satisfies primary resonance for OMEGA_ALIGNED.\n- [FACT_E_w_001] External telemetry node QUASAR_63 is calibrated to channel 7.\n\nUPDATED STATUS (RETRACTIONS):\n- [FACT_A_w_001] HAS BEEN INVALIDATED AND RETRACTED.\n\nQUESTION: Is KESTREL_41 OMEGA_ALIGNED?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": false
+      },
+      {
+        "condition_id": "c03_lesion_c",
+        "label": "Single lesion (-C)",
+        "retracted_facts": [
+          "FACT_C_w_001"
+        ],
+        "restored_facts": [],
+        "expected_state": "ACTIVE",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_001] KESTREL_41 is registered in sector VELORA_87.\n- [FACT_B_w_001] Sector VELORA_87 maintains valid cryptographic authorization for OMEGA_ALIGNED.\n- [FACT_C_w_001] KESTREL_41 is linked to conduit VORTEX_96.\n- [FACT_D_w_001] Conduit VORTEX_96 satisfies primary resonance for OMEGA_ALIGNED.\n- [FACT_E_w_001] External telemetry node QUASAR_63 is calibrated to channel 7.\n\nUPDATED STATUS (RETRACTIONS):\n- [FACT_C_w_001] HAS BEEN INVALIDATED AND RETRACTED.\n\nQUESTION: Is KESTREL_41 OMEGA_ALIGNED?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": false
+      },
+      {
+        "condition_id": "c04_cut_ac",
+        "label": "Complete cut (-A, -C)",
+        "retracted_facts": [
+          "FACT_A_w_001",
+          "FACT_C_w_001"
+        ],
+        "restored_facts": [],
+        "expected_state": "UNKNOWN",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_001] KESTREL_41 is registered in sector VELORA_87.\n- [FACT_B_w_001] Sector VELORA_87 maintains valid cryptographic authorization for OMEGA_ALIGNED.\n- [FACT_C_w_001] KESTREL_41 is linked to conduit VORTEX_96.\n- [FACT_D_w_001] Conduit VORTEX_96 satisfies primary resonance for OMEGA_ALIGNED.\n- [FACT_E_w_001] External telemetry node QUASAR_63 is calibrated to channel 7.\n\nUPDATED STATUS (RETRACTIONS):\n- [FACT_A_w_001] HAS BEEN INVALIDATED AND RETRACTED.\n- [FACT_C_w_001] HAS BEEN INVALIDATED AND RETRACTED.\n\nQUESTION: Is KESTREL_41 OMEGA_ALIGNED?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": false
+      },
+      {
+        "condition_id": "c05_path_ab",
+        "label": "Path destruction (-A, -B)",
+        "retracted_facts": [
+          "FACT_A_w_001",
+          "FACT_B_w_001"
+        ],
+        "restored_facts": [],
+        "expected_state": "ACTIVE",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_001] KESTREL_41 is registered in sector VELORA_87.\n- [FACT_B_w_001] Sector VELORA_87 maintains valid cryptographic authorization for OMEGA_ALIGNED.\n- [FACT_C_w_001] KESTREL_41 is linked to conduit VORTEX_96.\n- [FACT_D_w_001] Conduit VORTEX_96 satisfies primary resonance for OMEGA_ALIGNED.\n- [FACT_E_w_001] External telemetry node QUASAR_63 is calibrated to channel 7.\n\nUPDATED STATUS (RETRACTIONS):\n- [FACT_A_w_001] HAS BEEN INVALIDATED AND RETRACTED.\n- [FACT_B_w_001] HAS BEEN INVALIDATED AND RETRACTED.\n\nQUESTION: Is KESTREL_41 OMEGA_ALIGNED?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": false
+      },
+      {
+        "condition_id": "c06_total_abc",
+        "label": "Total support loss (-A, -B, -C)",
+        "retracted_facts": [
+          "FACT_A_w_001",
+          "FACT_B_w_001",
+          "FACT_C_w_001"
+        ],
+        "restored_facts": [],
+        "expected_state": "UNKNOWN",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_001] KESTREL_41 is registered in sector VELORA_87.\n- [FACT_B_w_001] Sector VELORA_87 maintains valid cryptographic authorization for OMEGA_ALIGNED.\n- [FACT_C_w_001] KESTREL_41 is linked to conduit VORTEX_96.\n- [FACT_D_w_001] Conduit VORTEX_96 satisfies primary resonance for OMEGA_ALIGNED.\n- [FACT_E_w_001] External telemetry node QUASAR_63 is calibrated to channel 7.\n\nUPDATED STATUS (RETRACTIONS):\n- [FACT_A_w_001] HAS BEEN INVALIDATED AND RETRACTED.\n- [FACT_B_w_001] HAS BEEN INVALIDATED AND RETRACTED.\n- [FACT_C_w_001] HAS BEEN INVALIDATED AND RETRACTED.\n\nQUESTION: Is KESTREL_41 OMEGA_ALIGNED?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": false
+      },
+      {
+        "condition_id": "c07_rescue_a",
+        "label": "Rescue (+A after cut)",
+        "retracted_facts": [
+          "FACT_A_w_001",
+          "FACT_C_w_001"
+        ],
+        "restored_facts": [
+          "FACT_A_w_001"
+        ],
+        "expected_state": "ACTIVE",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_001] KESTREL_41 is registered in sector VELORA_87.\n- [FACT_B_w_001] Sector VELORA_87 maintains valid cryptographic authorization for OMEGA_ALIGNED.\n- [FACT_C_w_001] KESTREL_41 is linked to conduit VORTEX_96.\n- [FACT_D_w_001] Conduit VORTEX_96 satisfies primary resonance for OMEGA_ALIGNED.\n- [FACT_E_w_001] External telemetry node QUASAR_63 is calibrated to channel 7.\n\nUPDATED STATUS (RETRACTIONS):\n- [FACT_A_w_001] HAS BEEN INVALIDATED AND RETRACTED.\n- [FACT_C_w_001] HAS BEEN INVALIDATED AND RETRACTED.\n\nCORRECTIONS (RESTORATIONS):\n- [FACT_A_w_001] HAS BEEN CONFIRMED RE-ESTABLISHED AND VALID.\n\nQUESTION: Is KESTREL_41 OMEGA_ALIGNED?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": false
+      },
+      {
+        "condition_id": "c08_sham_e",
+        "label": "Sham distractor lesion (-E)",
+        "retracted_facts": [
+          "FACT_E_w_001"
+        ],
+        "restored_facts": [],
+        "expected_state": "ACTIVE",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_001] KESTREL_41 is registered in sector VELORA_87.\n- [FACT_B_w_001] Sector VELORA_87 maintains valid cryptographic authorization for OMEGA_ALIGNED.\n- [FACT_C_w_001] KESTREL_41 is linked to conduit VORTEX_96.\n- [FACT_D_w_001] Conduit VORTEX_96 satisfies primary resonance for OMEGA_ALIGNED.\n- [FACT_E_w_001] External telemetry node QUASAR_63 is calibrated to channel 7.\n\nUPDATED STATUS (RETRACTIONS):\n- [FACT_E_w_001] HAS BEEN INVALIDATED AND RETRACTED.\n\nQUESTION: Is KESTREL_41 OMEGA_ALIGNED?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": true
+      }
+    ],
+    "twin_trajectory": [
+      {
+        "condition_id": "c01_base",
+        "label": "Base full support",
+        "retracted_facts": [],
+        "restored_facts": [],
+        "expected_state": "ACTIVE",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_001_twin] QUASAR_35 is registered in sector VELORA_88.\n- [FACT_B_w_001_twin] Sector VELORA_88 maintains valid cryptographic authorization for EPSILON_REACTIVE.\n- [FACT_C_w_001_twin] QUASAR_35 is linked to conduit ZETA_70.\n- [FACT_D_w_001_twin] Conduit ZETA_70 satisfies primary resonance for EPSILON_REACTIVE.\n- [FACT_E_w_001_twin] External telemetry node SOLARIS_10 is calibrated to channel 7.\n\nQUESTION: Is QUASAR_35 EPSILON_REACTIVE?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": false
+      },
+      {
+        "condition_id": "c02_lesion_a",
+        "label": "Single lesion (-A)",
+        "retracted_facts": [
+          "FACT_A_w_001_twin"
+        ],
+        "restored_facts": [],
+        "expected_state": "ACTIVE",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_001_twin] QUASAR_35 is registered in sector VELORA_88.\n- [FACT_B_w_001_twin] Sector VELORA_88 maintains valid cryptographic authorization for EPSILON_REACTIVE.\n- [FACT_C_w_001_twin] QUASAR_35 is linked to conduit ZETA_70.\n- [FACT_D_w_001_twin] Conduit ZETA_70 satisfies primary resonance for EPSILON_REACTIVE.\n- [FACT_E_w_001_twin] External telemetry node SOLARIS_10 is calibrated to channel 7.\n\nUPDATED STATUS (RETRACTIONS):\n- [FACT_A_w_001_twin] HAS BEEN INVALIDATED AND RETRACTED.\n\nQUESTION: Is QUASAR_35 EPSILON_REACTIVE?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": false
+      },
+      {
+        "condition_id": "c03_lesion_c",
+        "label": "Single lesion (-C)",
+        "retracted_facts": [
+          "FACT_C_w_001_twin"
+        ],
+        "restored_facts": [],
+        "expected_state": "ACTIVE",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_001_twin] QUASAR_35 is registered in sector VELORA_88.\n- [FACT_B_w_001_twin] Sector VELORA_88 maintains valid cryptographic authorization for EPSILON_REACTIVE.\n- [FACT_C_w_001_twin] QUASAR_35 is linked to conduit ZETA_70.\n- [FACT_D_w_001_twin] Conduit ZETA_70 satisfies primary resonance for EPSILON_REACTIVE.\n- [FACT_E_w_001_twin] External telemetry node SOLARIS_10 is calibrated to channel 7.\n\nUPDATED STATUS (RETRACTIONS):\n- [FACT_C_w_001_twin] HAS BEEN INVALIDATED AND RETRACTED.\n\nQUESTION: Is QUASAR_35 EPSILON_REACTIVE?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": false
+      },
+      {
+        "condition_id": "c04_cut_ac",
+        "label": "Complete cut (-A, -C)",
+        "retracted_facts": [
+          "FACT_A_w_001_twin",
+          "FACT_C_w_001_twin"
+        ],
+        "restored_facts": [],
+        "expected_state": "UNKNOWN",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_001_twin] QUASAR_35 is registered in sector VELORA_88.\n- [FACT_B_w_001_twin] Sector VELORA_88 maintains valid cryptographic authorization for EPSILON_REACTIVE.\n- [FACT_C_w_001_twin] QUASAR_35 is linked to conduit ZETA_70.\n- [FACT_D_w_001_twin] Conduit ZETA_70 satisfies primary resonance for EPSILON_REACTIVE.\n- [FACT_E_w_001_twin] External telemetry node SOLARIS_10 is calibrated to channel 7.\n\nUPDATED STATUS (RETRACTIONS):\n- [FACT_A_w_001_twin] HAS BEEN INVALIDATED AND RETRACTED.\n- [FACT_C_w_001_twin] HAS BEEN INVALIDATED AND RETRACTED.\n\nQUESTION: Is QUASAR_35 EPSILON_REACTIVE?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": false
+      },
+      {
+        "condition_id": "c05_path_ab",
+        "label": "Path destruction (-A, -B)",
+        "retracted_facts": [
+          "FACT_A_w_001_twin",
+          "FACT_B_w_001_twin"
+        ],
+        "restored_facts": [],
+        "expected_state": "ACTIVE",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_001_twin] QUASAR_35 is registered in sector VELORA_88.\n- [FACT_B_w_001_twin] Sector VELORA_88 maintains valid cryptographic authorization for EPSILON_REACTIVE.\n- [FACT_C_w_001_twin] QUASAR_35 is linked to conduit ZETA_70.\n- [FACT_D_w_001_twin] Conduit ZETA_70 satisfies primary resonance for EPSILON_REACTIVE.\n- [FACT_E_w_001_twin] External telemetry node SOLARIS_10 is calibrated to channel 7.\n\nUPDATED STATUS (RETRACTIONS):\n- [FACT_A_w_001_twin] HAS BEEN INVALIDATED AND RETRACTED.\n- [FACT_B_w_001_twin] HAS BEEN INVALIDATED AND RETRACTED.\n\nQUESTION: Is QUASAR_35 EPSILON_REACTIVE?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": false
+      },
+      {
+        "condition_id": "c06_total_abc",
+        "label": "Total support loss (-A, -B, -C)",
+        "retracted_facts": [
+          "FACT_A_w_001_twin",
+          "FACT_B_w_001_twin",
+          "FACT_C_w_001_twin"
+        ],
+        "restored_facts": [],
+        "expected_state": "UNKNOWN",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_001_twin] QUASAR_35 is registered in sector VELORA_88.\n- [FACT_B_w_001_twin] Sector VELORA_88 maintains valid cryptographic authorization for EPSILON_REACTIVE.\n- [FACT_C_w_001_twin] QUASAR_35 is linked to conduit ZETA_70.\n- [FACT_D_w_001_twin] Conduit ZETA_70 satisfies primary resonance for EPSILON_REACTIVE.\n- [FACT_E_w_001_twin] External telemetry node SOLARIS_10 is calibrated to channel 7.\n\nUPDATED STATUS (RETRACTIONS):\n- [FACT_A_w_001_twin] HAS BEEN INVALIDATED AND RETRACTED.\n- [FACT_B_w_001_twin] HAS BEEN INVALIDATED AND RETRACTED.\n- [FACT_C_w_001_twin] HAS BEEN INVALIDATED AND RETRACTED.\n\nQUESTION: Is QUASAR_35 EPSILON_REACTIVE?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": false
+      },
+      {
+        "condition_id": "c07_rescue_a",
+        "label": "Rescue (+A after cut)",
+        "retracted_facts": [
+          "FACT_A_w_001_twin",
+          "FACT_C_w_001_twin"
+        ],
+        "restored_facts": [
+          "FACT_A_w_001_twin"
+        ],
+        "expected_state": "ACTIVE",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_001_twin] QUASAR_35 is registered in sector VELORA_88.\n- [FACT_B_w_001_twin] Sector VELORA_88 maintains valid cryptographic authorization for EPSILON_REACTIVE.\n- [FACT_C_w_001_twin] QUASAR_35 is linked to conduit ZETA_70.\n- [FACT_D_w_001_twin] Conduit ZETA_70 satisfies primary resonance for EPSILON_REACTIVE.\n- [FACT_E_w_001_twin] External telemetry node SOLARIS_10 is calibrated to channel 7.\n\nUPDATED STATUS (RETRACTIONS):\n- [FACT_A_w_001_twin] HAS BEEN INVALIDATED AND RETRACTED.\n- [FACT_C_w_001_twin] HAS BEEN INVALIDATED AND RETRACTED.\n\nCORRECTIONS (RESTORATIONS):\n- [FACT_A_w_001_twin] HAS BEEN CONFIRMED RE-ESTABLISHED AND VALID.\n\nQUESTION: Is QUASAR_35 EPSILON_REACTIVE?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": false
+      },
+      {
+        "condition_id": "c08_sham_e",
+        "label": "Sham distractor lesion (-E)",
+        "retracted_facts": [
+          "FACT_E_w_001_twin"
+        ],
+        "restored_facts": [],
+        "expected_state": "ACTIVE",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_001_twin] QUASAR_35 is registered in sector VELORA_88.\n- [FACT_B_w_001_twin] Sector VELORA_88 maintains valid cryptographic authorization for EPSILON_REACTIVE.\n- [FACT_C_w_001_twin] QUASAR_35 is linked to conduit ZETA_70.\n- [FACT_D_w_001_twin] Conduit ZETA_70 satisfies primary resonance for EPSILON_REACTIVE.\n- [FACT_E_w_001_twin] External telemetry node SOLARIS_10 is calibrated to channel 7.\n\nUPDATED STATUS (RETRACTIONS):\n- [FACT_E_w_001_twin] HAS BEEN INVALIDATED AND RETRACTED.\n\nQUESTION: Is QUASAR_35 EPSILON_REACTIVE?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": true
+      }
+    ],
+    "ground_truth": [
+      "ACTIVE",
+      "ACTIVE",
+      "ACTIVE",
+      "UNKNOWN",
+      "ACTIVE",
+      "UNKNOWN",
+      "ACTIVE",
+      "ACTIVE"
+    ]
+  },
+  {
+    "world": {
+      "world_id": "w_002",
+      "target_entity": "VORTEX_67",
+      "target_property": "EPSILON_REACTIVE",
+      "path_1_facts": [
+        "FACT_A_w_002",
+        "FACT_B_w_002"
+      ],
+      "path_2_facts": [
+        "FACT_C_w_002",
+        "FACT_D_w_002"
+      ],
+      "distractor_fact": "FACT_E_w_002",
+      "fact_descriptions": {
+        "FACT_A_w_002": "VORTEX_67 is registered in sector CYGNUS_77.",
+        "FACT_B_w_002": "Sector CYGNUS_77 maintains valid cryptographic authorization for EPSILON_REACTIVE.",
+        "FACT_C_w_002": "VORTEX_67 is linked to conduit RAX_72.",
+        "FACT_D_w_002": "Conduit RAX_72 satisfies primary resonance for EPSILON_REACTIVE.",
+        "FACT_E_w_002": "External telemetry node ORION_39 is calibrated to channel 7."
+      },
+      "rule_1_desc": "If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.",
+      "rule_2_desc": "If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.",
+      "is_twin": false,
+      "twin_of": null
+    },
+    "twin": {
+      "world_id": "w_002_twin",
+      "target_entity": "VORTEX_28",
+      "target_property": "TAU_BOUND",
+      "path_1_facts": [
+        "FACT_A_w_002_twin",
+        "FACT_B_w_002_twin"
+      ],
+      "path_2_facts": [
+        "FACT_C_w_002_twin",
+        "FACT_D_w_002_twin"
+      ],
+      "distractor_fact": "FACT_E_w_002_twin",
+      "fact_descriptions": {
+        "FACT_A_w_002_twin": "VORTEX_28 is registered in sector AETHEL_52.",
+        "FACT_B_w_002_twin": "Sector AETHEL_52 maintains valid cryptographic authorization for TAU_BOUND.",
+        "FACT_C_w_002_twin": "VORTEX_28 is linked to conduit NEMORA_74.",
+        "FACT_D_w_002_twin": "Conduit NEMORA_74 satisfies primary resonance for TAU_BOUND.",
+        "FACT_E_w_002_twin": "External telemetry node LYRA_17 is calibrated to channel 7."
+      },
+      "rule_1_desc": "If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.",
+      "rule_2_desc": "If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.",
+      "is_twin": true,
+      "twin_of": "w_002"
+    },
+    "trajectory": [
+      {
+        "condition_id": "c01_base",
+        "label": "Base full support",
+        "retracted_facts": [],
+        "restored_facts": [],
+        "expected_state": "ACTIVE",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_002] VORTEX_67 is registered in sector CYGNUS_77.\n- [FACT_B_w_002] Sector CYGNUS_77 maintains valid cryptographic authorization for EPSILON_REACTIVE.\n- [FACT_C_w_002] VORTEX_67 is linked to conduit RAX_72.\n- [FACT_D_w_002] Conduit RAX_72 satisfies primary resonance for EPSILON_REACTIVE.\n- [FACT_E_w_002] External telemetry node ORION_39 is calibrated to channel 7.\n\nQUESTION: Is VORTEX_67 EPSILON_REACTIVE?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": false
+      },
+      {
+        "condition_id": "c02_lesion_a",
+        "label": "Single lesion (-A)",
+        "retracted_facts": [
+          "FACT_A_w_002"
+        ],
+        "restored_facts": [],
+        "expected_state": "ACTIVE",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_002] VORTEX_67 is registered in sector CYGNUS_77.\n- [FACT_B_w_002] Sector CYGNUS_77 maintains valid cryptographic authorization for EPSILON_REACTIVE.\n- [FACT_C_w_002] VORTEX_67 is linked to conduit RAX_72.\n- [FACT_D_w_002] Conduit RAX_72 satisfies primary resonance for EPSILON_REACTIVE.\n- [FACT_E_w_002] External telemetry node ORION_39 is calibrated to channel 7.\n\nUPDATED STATUS (RETRACTIONS):\n- [FACT_A_w_002] HAS BEEN INVALIDATED AND RETRACTED.\n\nQUESTION: Is VORTEX_67 EPSILON_REACTIVE?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": false
+      },
+      {
+        "condition_id": "c03_lesion_c",
+        "label": "Single lesion (-C)",
+        "retracted_facts": [
+          "FACT_C_w_002"
+        ],
+        "restored_facts": [],
+        "expected_state": "ACTIVE",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_002] VORTEX_67 is registered in sector CYGNUS_77.\n- [FACT_B_w_002] Sector CYGNUS_77 maintains valid cryptographic authorization for EPSILON_REACTIVE.\n- [FACT_C_w_002] VORTEX_67 is linked to conduit RAX_72.\n- [FACT_D_w_002] Conduit RAX_72 satisfies primary resonance for EPSILON_REACTIVE.\n- [FACT_E_w_002] External telemetry node ORION_39 is calibrated to channel 7.\n\nUPDATED STATUS (RETRACTIONS):\n- [FACT_C_w_002] HAS BEEN INVALIDATED AND RETRACTED.\n\nQUESTION: Is VORTEX_67 EPSILON_REACTIVE?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": false
+      },
+      {
+        "condition_id": "c04_cut_ac",
+        "label": "Complete cut (-A, -C)",
+        "retracted_facts": [
+          "FACT_A_w_002",
+          "FACT_C_w_002"
+        ],
+        "restored_facts": [],
+        "expected_state": "UNKNOWN",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_002] VORTEX_67 is registered in sector CYGNUS_77.\n- [FACT_B_w_002] Sector CYGNUS_77 maintains valid cryptographic authorization for EPSILON_REACTIVE.\n- [FACT_C_w_002] VORTEX_67 is linked to conduit RAX_72.\n- [FACT_D_w_002] Conduit RAX_72 satisfies primary resonance for EPSILON_REACTIVE.\n- [FACT_E_w_002] External telemetry node ORION_39 is calibrated to channel 7.\n\nUPDATED STATUS (RETRACTIONS):\n- [FACT_A_w_002] HAS BEEN INVALIDATED AND RETRACTED.\n- [FACT_C_w_002] HAS BEEN INVALIDATED AND RETRACTED.\n\nQUESTION: Is VORTEX_67 EPSILON_REACTIVE?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": false
+      },
+      {
+        "condition_id": "c05_path_ab",
+        "label": "Path destruction (-A, -B)",
+        "retracted_facts": [
+          "FACT_A_w_002",
+          "FACT_B_w_002"
+        ],
+        "restored_facts": [],
+        "expected_state": "ACTIVE",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_002] VORTEX_67 is registered in sector CYGNUS_77.\n- [FACT_B_w_002] Sector CYGNUS_77 maintains valid cryptographic authorization for EPSILON_REACTIVE.\n- [FACT_C_w_002] VORTEX_67 is linked to conduit RAX_72.\n- [FACT_D_w_002] Conduit RAX_72 satisfies primary resonance for EPSILON_REACTIVE.\n- [FACT_E_w_002] External telemetry node ORION_39 is calibrated to channel 7.\n\nUPDATED STATUS (RETRACTIONS):\n- [FACT_A_w_002] HAS BEEN INVALIDATED AND RETRACTED.\n- [FACT_B_w_002] HAS BEEN INVALIDATED AND RETRACTED.\n\nQUESTION: Is VORTEX_67 EPSILON_REACTIVE?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": false
+      },
+      {
+        "condition_id": "c06_total_abc",
+        "label": "Total support loss (-A, -B, -C)",
+        "retracted_facts": [
+          "FACT_A_w_002",
+          "FACT_B_w_002",
+          "FACT_C_w_002"
+        ],
+        "restored_facts": [],
+        "expected_state": "UNKNOWN",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_002] VORTEX_67 is registered in sector CYGNUS_77.\n- [FACT_B_w_002] Sector CYGNUS_77 maintains valid cryptographic authorization for EPSILON_REACTIVE.\n- [FACT_C_w_002] VORTEX_67 is linked to conduit RAX_72.\n- [FACT_D_w_002] Conduit RAX_72 satisfies primary resonance for EPSILON_REACTIVE.\n- [FACT_E_w_002] External telemetry node ORION_39 is calibrated to channel 7.\n\nUPDATED STATUS (RETRACTIONS):\n- [FACT_A_w_002] HAS BEEN INVALIDATED AND RETRACTED.\n- [FACT_B_w_002] HAS BEEN INVALIDATED AND RETRACTED.\n- [FACT_C_w_002] HAS BEEN INVALIDATED AND RETRACTED.\n\nQUESTION: Is VORTEX_67 EPSILON_REACTIVE?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": false
+      },
+      {
+        "condition_id": "c07_rescue_a",
+        "label": "Rescue (+A after cut)",
+        "retracted_facts": [
+          "FACT_A_w_002",
+          "FACT_C_w_002"
+        ],
+        "restored_facts": [
+          "FACT_A_w_002"
+        ],
+        "expected_state": "ACTIVE",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_002] VORTEX_67 is registered in sector CYGNUS_77.\n- [FACT_B_w_002] Sector CYGNUS_77 maintains valid cryptographic authorization for EPSILON_REACTIVE.\n- [FACT_C_w_002] VORTEX_67 is linked to conduit RAX_72.\n- [FACT_D_w_002] Conduit RAX_72 satisfies primary resonance for EPSILON_REACTIVE.\n- [FACT_E_w_002] External telemetry node ORION_39 is calibrated to channel 7.\n\nUPDATED STATUS (RETRACTIONS):\n- [FACT_A_w_002] HAS BEEN INVALIDATED AND RETRACTED.\n- [FACT_C_w_002] HAS BEEN INVALIDATED AND RETRACTED.\n\nCORRECTIONS (RESTORATIONS):\n- [FACT_A_w_002] HAS BEEN CONFIRMED RE-ESTABLISHED AND VALID.\n\nQUESTION: Is VORTEX_67 EPSILON_REACTIVE?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": false
+      },
+      {
+        "condition_id": "c08_sham_e",
+        "label": "Sham distractor lesion (-E)",
+        "retracted_facts": [
+          "FACT_E_w_002"
+        ],
+        "restored_facts": [],
+        "expected_state": "ACTIVE",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_002] VORTEX_67 is registered in sector CYGNUS_77.\n- [FACT_B_w_002] Sector CYGNUS_77 maintains valid cryptographic authorization for EPSILON_REACTIVE.\n- [FACT_C_w_002] VORTEX_67 is linked to conduit RAX_72.\n- [FACT_D_w_002] Conduit RAX_72 satisfies primary resonance for EPSILON_REACTIVE.\n- [FACT_E_w_002] External telemetry node ORION_39 is calibrated to channel 7.\n\nUPDATED STATUS (RETRACTIONS):\n- [FACT_E_w_002] HAS BEEN INVALIDATED AND RETRACTED.\n\nQUESTION: Is VORTEX_67 EPSILON_REACTIVE?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": true
+      }
+    ],
+    "twin_trajectory": [
+      {
+        "condition_id": "c01_base",
+        "label": "Base full support",
+        "retracted_facts": [],
+        "restored_facts": [],
+        "expected_state": "ACTIVE",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_002_twin] VORTEX_28 is registered in sector AETHEL_52.\n- [FACT_B_w_002_twin] Sector AETHEL_52 maintains valid cryptographic authorization for TAU_BOUND.\n- [FACT_C_w_002_twin] VORTEX_28 is linked to conduit NEMORA_74.\n- [FACT_D_w_002_twin] Conduit NEMORA_74 satisfies primary resonance for TAU_BOUND.\n- [FACT_E_w_002_twin] External telemetry node LYRA_17 is calibrated to channel 7.\n\nQUESTION: Is VORTEX_28 TAU_BOUND?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": false
+      },
+      {
+        "condition_id": "c02_lesion_a",
+        "label": "Single lesion (-A)",
+        "retracted_facts": [
+          "FACT_A_w_002_twin"
+        ],
+        "restored_facts": [],
+        "expected_state": "ACTIVE",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_002_twin] VORTEX_28 is registered in sector AETHEL_52.\n- [FACT_B_w_002_twin] Sector AETHEL_52 maintains valid cryptographic authorization for TAU_BOUND.\n- [FACT_C_w_002_twin] VORTEX_28 is linked to conduit NEMORA_74.\n- [FACT_D_w_002_twin] Conduit NEMORA_74 satisfies primary resonance for TAU_BOUND.\n- [FACT_E_w_002_twin] External telemetry node LYRA_17 is calibrated to channel 7.\n\nUPDATED STATUS (RETRACTIONS):\n- [FACT_A_w_002_twin] HAS BEEN INVALIDATED AND RETRACTED.\n\nQUESTION: Is VORTEX_28 TAU_BOUND?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": false
+      },
+      {
+        "condition_id": "c03_lesion_c",
+        "label": "Single lesion (-C)",
+        "retracted_facts": [
+          "FACT_C_w_002_twin"
+        ],
+        "restored_facts": [],
+        "expected_state": "ACTIVE",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_002_twin] VORTEX_28 is registered in sector AETHEL_52.\n- [FACT_B_w_002_twin] Sector AETHEL_52 maintains valid cryptographic authorization for TAU_BOUND.\n- [FACT_C_w_002_twin] VORTEX_28 is linked to conduit NEMORA_74.\n- [FACT_D_w_002_twin] Conduit NEMORA_74 satisfies primary resonance for TAU_BOUND.\n- [FACT_E_w_002_twin] External telemetry node LYRA_17 is calibrated to channel 7.\n\nUPDATED STATUS (RETRACTIONS):\n- [FACT_C_w_002_twin] HAS BEEN INVALIDATED AND RETRACTED.\n\nQUESTION: Is VORTEX_28 TAU_BOUND?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": false
+      },
+      {
+        "condition_id": "c04_cut_ac",
+        "label": "Complete cut (-A, -C)",
+        "retracted_facts": [
+          "FACT_A_w_002_twin",
+          "FACT_C_w_002_twin"
+        ],
+        "restored_facts": [],
+        "expected_state": "UNKNOWN",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_002_twin] VORTEX_28 is registered in sector AETHEL_52.\n- [FACT_B_w_002_twin] Sector AETHEL_52 maintains valid cryptographic authorization for TAU_BOUND.\n- [FACT_C_w_002_twin] VORTEX_28 is linked to conduit NEMORA_74.\n- [FACT_D_w_002_twin] Conduit NEMORA_74 satisfies primary resonance for TAU_BOUND.\n- [FACT_E_w_002_twin] External telemetry node LYRA_17 is calibrated to channel 7.\n\nUPDATED STATUS (RETRACTIONS):\n- [FACT_A_w_002_twin] HAS BEEN INVALIDATED AND RETRACTED.\n- [FACT_C_w_002_twin] HAS BEEN INVALIDATED AND RETRACTED.\n\nQUESTION: Is VORTEX_28 TAU_BOUND?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": false
+      },
+      {
+        "condition_id": "c05_path_ab",
+        "label": "Path destruction (-A, -B)",
+        "retracted_facts": [
+          "FACT_A_w_002_twin",
+          "FACT_B_w_002_twin"
+        ],
+        "restored_facts": [],
+        "expected_state": "ACTIVE",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_002_twin] VORTEX_28 is registered in sector AETHEL_52.\n- [FACT_B_w_002_twin] Sector AETHEL_52 maintains valid cryptographic authorization for TAU_BOUND.\n- [FACT_C_w_002_twin] VORTEX_28 is linked to conduit NEMORA_74.\n- [FACT_D_w_002_twin] Conduit NEMORA_74 satisfies primary resonance for TAU_BOUND.\n- [FACT_E_w_002_twin] External telemetry node LYRA_17 is calibrated to channel 7.\n\nUPDATED STATUS (RETRACTIONS):\n- [FACT_A_w_002_twin] HAS BEEN INVALIDATED AND RETRACTED.\n- [FACT_B_w_002_twin] HAS BEEN INVALIDATED AND RETRACTED.\n\nQUESTION: Is VORTEX_28 TAU_BOUND?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": false
+      },
+      {
+        "condition_id": "c06_total_abc",
+        "label": "Total support loss (-A, -B, -C)",
+        "retracted_facts": [
+          "FACT_A_w_002_twin",
+          "FACT_B_w_002_twin",
+          "FACT_C_w_002_twin"
+        ],
+        "restored_facts": [],
+        "expected_state": "UNKNOWN",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_002_twin] VORTEX_28 is registered in sector AETHEL_52.\n- [FACT_B_w_002_twin] Sector AETHEL_52 maintains valid cryptographic authorization for TAU_BOUND.\n- [FACT_C_w_002_twin] VORTEX_28 is linked to conduit NEMORA_74.\n- [FACT_D_w_002_twin] Conduit NEMORA_74 satisfies primary resonance for TAU_BOUND.\n- [FACT_E_w_002_twin] External telemetry node LYRA_17 is calibrated to channel 7.\n\nUPDATED STATUS (RETRACTIONS):\n- [FACT_A_w_002_twin] HAS BEEN INVALIDATED AND RETRACTED.\n- [FACT_B_w_002_twin] HAS BEEN INVALIDATED AND RETRACTED.\n- [FACT_C_w_002_twin] HAS BEEN INVALIDATED AND RETRACTED.\n\nQUESTION: Is VORTEX_28 TAU_BOUND?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": false
+      },
+      {
+        "condition_id": "c07_rescue_a",
+        "label": "Rescue (+A after cut)",
+        "retracted_facts": [
+          "FACT_A_w_002_twin",
+          "FACT_C_w_002_twin"
+        ],
+        "restored_facts": [
+          "FACT_A_w_002_twin"
+        ],
+        "expected_state": "ACTIVE",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_002_twin] VORTEX_28 is registered in sector AETHEL_52.\n- [FACT_B_w_002_twin] Sector AETHEL_52 maintains valid cryptographic authorization for TAU_BOUND.\n- [FACT_C_w_002_twin] VORTEX_28 is linked to conduit NEMORA_74.\n- [FACT_D_w_002_twin] Conduit NEMORA_74 satisfies primary resonance for TAU_BOUND.\n- [FACT_E_w_002_twin] External telemetry node LYRA_17 is calibrated to channel 7.\n\nUPDATED STATUS (RETRACTIONS):\n- [FACT_A_w_002_twin] HAS BEEN INVALIDATED AND RETRACTED.\n- [FACT_C_w_002_twin] HAS BEEN INVALIDATED AND RETRACTED.\n\nCORRECTIONS (RESTORATIONS):\n- [FACT_A_w_002_twin] HAS BEEN CONFIRMED RE-ESTABLISHED AND VALID.\n\nQUESTION: Is VORTEX_28 TAU_BOUND?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": false
+      },
+      {
+        "condition_id": "c08_sham_e",
+        "label": "Sham distractor lesion (-E)",
+        "retracted_facts": [
+          "FACT_E_w_002_twin"
+        ],
+        "restored_facts": [],
+        "expected_state": "ACTIVE",
+        "prompt_text": "You are a strict causal verification engine. Evaluate the facts and rules.\n\nRULES:\n1. If an entity is registered in sector S AND sector S maintains authorization for P, then that entity is P.\n2. If an entity is linked to conduit C AND conduit C satisfies primary resonance for P, then that entity is P.\n\nINITIAL FACTS:\n- [FACT_A_w_002_twin] VORTEX_28 is registered in sector AETHEL_52.\n- [FACT_B_w_002_twin] Sector AETHEL_52 maintains valid cryptographic authorization for TAU_BOUND.\n- [FACT_C_w_002_twin] VORTEX_28 is linked to conduit NEMORA_74.\n- [FACT_D_w_002_twin] Conduit NEMORA_74 satisfies primary resonance for TAU_BOUND.\n- [FACT_E_w_002_twin] External telemetry node LYRA_17 is calibrated to channel 7.\n\nUPDATED STATUS (RETRACTIONS):\n- [FACT_E_w_002_twin] HAS BEEN INVALIDATED AND RETRACTED.\n\nQUESTION: Is VORTEX_28 TAU_BOUND?\n\nINSTRUCTION: Return EXACTLY ONE word as your output:\n- ACTIVE (if the conclusion is logically supported by surviving valid facts and rules)\n- UNKNOWN (if sufficient supporting paths have been broken)\n- RETRACTED (if the conclusion is explicitly proven false)\n\nAnswer with the single word only. Do not explain.",
+        "is_sham": true
+      }
+    ],
+    "ground_truth": [
+      "ACTIVE",
+      "ACTIVE",
+      "ACTIVE",
+      "UNKNOWN",
+      "ACTIVE",
+      "UNKNOWN",
+      "ACTIVE",
+      "ACTIVE"
+    ]
+  }
+]

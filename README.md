@@ -128,10 +128,32 @@ Each assay produces structured run artifacts under `runs/<timestamp>-<mode>/`:
 
 ---
 
+## Exploration 2A: Causal Support Dynamics ($F_M^{\text{dynamic}}$)
+
+Rather than evaluating raw benchmark accuracy, Exploration 2A measures the **counterfactual response trajectory** under 8 paired causal interventions across minimal multi-path support environments $S(X) = \{\{A, B\}, \{C, D\}\}$:
+
+$$F_M(W) = [y_{\text{base}}, y_{-A}, y_{-C}, y_{-AC}, y_{-AB}, y_{-ABC}, y_{\text{rescue}}, y_{\text{sham}}]$$
+
+- **Isomorphic Twins**: Every base world has a paired twin $W'$ with relabeled entities and permuted clause order to test within-model stability.
+- **Lexical vs Causal Control (Sham)**: Retracts an unrelated distractor fact $E$ to separate true causal reasoning from superficial keyword sensitivity.
+- **Exploration Firewall**: Candidate worlds are synthesized and ranked locally; only top holdout worlds are frozen with SHA-256 commit hashes before querying Ox Alpha.
+
+### Run Dynamics Commands:
+
+```bash
+# 1. Synthesize 30 candidate worlds and freeze top 8 holdouts
+python oxford.py dynamics-synthesize --count 30 --top-k 8
+
+# 2. Run causal support dynamics assay against target
+python oxford.py dynamics-assay --open
+```
+
+---
+
 ## Epistemic Ledger & Scientific Boundary
 
-- **Offset Invariance**: Constant wrapper overhead $k$ drops out under differential baseline subtraction:
-  $$[T_{\text{target}}(x_i) - T_{\text{target}}(x_0)] = T_{\text{tokenizer}}(x_i) - T_{\text{tokenizer}}(x_0)$$
-- **Attribution Boundary**: A matching differential tokenization geometry indicates a shared tokenizer/vocab family, but does not identify a specific checkpoint, server operator, or provider without confirmatory behavioral and serving assays.
+- **Structural Channel ($F_M^{\text{structural}}$)**: Constant wrapper overhead $k$ drops out under differential baseline subtraction. Matching tokenizer geometry indicates compatible tokenizer/vocab boundaries.
+- **Dynamic Channel ($F_M^{\text{dynamic}}$)**: Paired response trajectories across causal interventions capture counterfactual failure/survival topologies.
+- **Attribution Boundary**: Structural and causal phenotypes narrow model lineage and post-training families without premature claims regarding serving infrastructure or host operator identity.
 
 See [`docs/PILOT_PROTOCOL.md`](file:///c:/Users/admir/Github/oxford-lite/docs/PILOT_PROTOCOL.md) for the complete scientific protocol.

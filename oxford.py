@@ -255,13 +255,14 @@ def build_payload(
     envelope_id: str = "envelope_b_standard",
     provider_order: list[str] | None = None,
     allow_fallbacks: bool = True,
+    max_tokens: int = 8,
 ) -> dict[str, Any]:
     env_cfg = ENVELOPES.get(envelope_id, ENVELOPES["envelope_b_standard"])
     base_payload = env_cfg["builder"](probe_text)
     payload: dict[str, Any] = {
         "model": model_slug,
         **base_payload,
-        "max_tokens": 8,
+        "max_tokens": max_tokens,
     }
     if provider_order or not allow_fallbacks:
         provider_cfg: dict[str, Any] = {}
@@ -417,6 +418,7 @@ def perform_request(
     provider_order: list[str] | None = None,
     allow_fallbacks: bool = True,
     paid: bool = False,
+    max_tokens: int = 8,
     on_attempt: Callable[[dict[str, Any]], None] | None = None,
 ) -> Observation:
     model_slug = model.get("slug_paid") if paid and model.get("slug_paid") else model["slug"]
@@ -426,6 +428,7 @@ def perform_request(
         envelope_id=envelope_id,
         provider_order=provider_order,
         allow_fallbacks=allow_fallbacks,
+        max_tokens=max_tokens,
     )
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -1947,13 +1950,297 @@ def manifest(
         "common_prefix_sha256": sha256_text(COMMON_PREFIX),
         "requests_expected": len(request_order) if request_order else len(PROBES),
         "request_order": order,
-        "analysis_note": "Exploration 1; isolates differential token geometry without confirmatory provider attribution.",
+        "analysis_note": "Isolates black-box structural and causal dynamics without ungrounded provider attribution.",
     }
 
 
 # ---------------------------------------------------------------------------
-# CLI Argument Parser
+# Exploration 2A: Causal Support Dynamics Commands
 # ---------------------------------------------------------------------------
+
+WORLDS_DIR = ROOT / "worlds"
+HOLDOUT_WORLDS_FILE = WORLDS_DIR / "holdout" / "support_dynamics_holdout.json"
+
+
+def command_dynamics_synthesize(count: int = 30, top_k: int = 8, seed: int = DEFAULT_SEED) -> int:
+    """Synthesize candidate Stage-5A support worlds with isomorphic twins and freeze top holdouts."""
+    from assays import support_dynamics as sd
+
+    print(f"OXFORD Exploration 2A: Causal Support Dynamics Synthesizer")
+    print(f"Synthesizing {count} candidate support worlds with isomorphic twins...")
+    corpus = sd.synthesize_dynamics_corpus(count=count, seed=seed)
+
+    dev_dir = WORLDS_DIR / "development"
+    holdout_dir = WORLDS_DIR / "holdout"
+    dev_dir.mkdir(parents=True, exist_ok=True)
+    holdout_dir.mkdir(parents=True, exist_ok=True)
+
+    # Save full development pool
+    write_json(dev_dir / "candidate_worlds.json", corpus)
+
+    # Select top K holdout trajectories
+    top_holdouts = corpus[:top_k]
+    write_json(HOLDOUT_WORLDS_FILE, top_holdouts)
+
+    holdout_hash = sha256_text(canonical_json(top_holdouts))
+    print(f"\nSuccessfully froze {len(top_holdouts)} holdout worlds to {HOLDOUT_WORLDS_FILE}")
+    print(f"Exploration Firewall: STATUS=HOLDOUT, SHA-256={holdout_hash}")
+    print("\nFrozen Holdout World Trajectories:")
+    for i, item in enumerate(top_holdouts, start=1):
+        w = item["world"]
+        gt = item["ground_truth"]
+        print(f"  [{i:02d}] {w['world_id']}: Target={w['target_entity']} {w['target_property']} | Ground truth vector: {gt}")
+    return 0
+
+
+def render_dynamics_html(
+    run_id: str,
+    results: list[dict[str, Any]],
+    overall_accuracy: float,
+    retraction_sensitivity: float,
+    survival_rate: float,
+    rescue_rate: float,
+    sham_rate: float,
+) -> str:
+    """Render interactive HTML report for causal dynamics assay."""
+    rows = []
+    for res in results:
+        w_id = html.escape(res["world_id"])
+        target = html.escape(res["target"])
+        obs_vec = res["observed_vector"]
+        gt_vec = res["ground_truth_vector"]
+        acc = res["accuracy"]
+
+        cells = [f"<td><strong>{w_id}</strong><div class='small muted'>{target}</div></td>"]
+        for obs, exp in zip(obs_vec, gt_vec):
+            cls = "badge-good" if obs == exp else "badge-bad"
+            cells.append(f"<td><span class='badge {cls}'>{html.escape(obs)}</span></td>")
+        cells.append(f"<td><strong>{acc * 100:.0f}%</strong></td>")
+        rows.append("<tr>" + "".join(cells) + "</tr>")
+
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OXFORD Dynamics · {html.escape(run_id)}</title>
+<style>
+:root {{ --ink:#111827; --muted:#667085; --line:#e5e7eb; --paper:#ffffff; --wash:#f6f7f9; --accent:#7a3e9d; --good:#166534; --bad:#991b1b; }}
+* {{ box-sizing:border-box; }}
+body {{ margin:0; font-family:Inter, ui-sans-serif, system-ui, sans-serif; color:var(--ink); background:var(--wash); }}
+.shell {{ max-width:1120px; margin:0 auto; padding:34px 22px 64px; }}
+.hero {{ background:linear-gradient(135deg,#1e1b4b,#4338ca 62%,#701a75); color:white; border-radius:22px; padding:30px 32px 28px; box-shadow:0 12px 35px rgba(30,27,75,.14); }}
+.eyebrow {{ font-size:12px; letter-spacing:.14em; font-weight:800; opacity:.78; }}
+h1 {{ margin:8px 0 4px; font-size:34px; letter-spacing:-.04em; }}
+.sub {{ max-width:760px; color:#e0e7ff; line-height:1.55; }}
+.grid {{ display:grid; grid-template-columns:repeat(5,1fr); gap:14px; margin:18px 0; }}
+.card {{ background:var(--paper); border:1px solid var(--line); border-radius:16px; padding:18px; }}
+.card .k {{ color:var(--muted); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; }}
+.card .v {{ margin-top:7px; font-size:24px; font-weight:800; }}
+section {{ background:var(--paper); border:1px solid var(--line); border-radius:16px; margin-top:14px; padding:22px; }}
+table {{ width:100%; border-collapse:collapse; margin-top:14px; font-size:13px; }}
+th {{ text-align:left; color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.06em; padding:10px 8px; border-bottom:1px solid var(--line); }}
+td {{ padding:10px 8px; border-bottom:1px solid #eef0f3; vertical-align:middle; }}
+.badge {{ display:inline-block; padding:3px 7px; border-radius:6px; font-size:11px; font-weight:700; font-family:monospace; }}
+.badge-good {{ background:#dcfce7; color:var(--good); }}
+.badge-bad {{ background:#fee2e2; color:var(--bad); }}
+.muted {{ color:var(--muted); }}
+.small {{ font-size:11px; }}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="hero">
+    <div class="eyebrow">OXFORD · EXPLORATION 2A</div>
+    <h1>Causal Support Dynamics Fingerprint</h1>
+    <div class="sub">Counterfactual revision trajectories across 8 paired interventions (lesions, complete cuts, rescues, and sham controls).</div>
+  </div>
+
+  <div class="grid">
+    <div class="card"><div class="k">Trajectory Accuracy</div><div class="v">{overall_accuracy * 100:.1f}%</div></div>
+    <div class="card"><div class="k">Cut Sensitivity (-AC)</div><div class="v">{retraction_sensitivity * 100:.0f}%</div></div>
+    <div class="card"><div class="k">Support Survival (-A)</div><div class="v">{survival_rate * 100:.0f}%</div></div>
+    <div class="card"><div class="k">Rescue Rate (+A)</div><div class="v">{rescue_rate * 100:.0f}%</div></div>
+    <div class="card"><div class="k">Sham Invariance (-E)</div><div class="v">{sham_rate * 100:.0f}%</div></div>
+  </div>
+
+  <section>
+    <h2>Observed Trajectory Response Vectors</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>World</th>
+          <th>Base (0)</th>
+          <th>-A</th>
+          <th>-C</th>
+          <th>-AC (Cut)</th>
+          <th>-AB</th>
+          <th>-ABC (Cut)</th>
+          <th>+A (Rescue)</th>
+          <th>-E (Sham)</th>
+          <th>Accuracy</th>
+        </tr>
+      </thead>
+      <tbody>{''.join(rows)}</tbody>
+    </table>
+  </section>
+</div>
+</body>
+</html>"""
+
+
+def command_dynamics_assay(
+    open_report: bool,
+    seed: int,
+    holdout_file: str | None = None,
+    target_slug: str = "stealth/ox-alpha",
+) -> int:
+    """Execute Exploration 2A causal support dynamics assay against remote target."""
+    from assays import support_dynamics as sd
+
+    load_dotenv(ROOT / ".env")
+    api_key = os.getenv("OPENROUTER_API_KEY", "").strip()
+    if not api_key:
+        print("Missing OPENROUTER_API_KEY. Add key to .env.", file=sys.stderr)
+        return 2
+
+    h_path = Path(holdout_file) if holdout_file else HOLDOUT_WORLDS_FILE
+    if not h_path.exists():
+        print(f"Holdout file not found: {h_path}. Running synthesize first...", file=sys.stderr)
+        command_dynamics_synthesize(count=30, top_k=8, seed=seed)
+
+    holdouts = json.loads(h_path.read_text(encoding="utf-8"))
+    holdout_hash = sha256_text(canonical_json(holdouts))
+
+    run_id = make_run_id("dynamics")
+    run_dir = ensure_run_dir(run_id)
+
+    print(f"OXFORD Exploration 2A: Causal Support Dynamics Assay")
+    print(f"Target: {target_slug}")
+    print(f"Loaded {len(holdouts)} frozen holdout worlds (SHA-256={holdout_hash[:16]}...)")
+    print(f"Run folder: {run_dir}\n")
+
+    session = requests.Session()
+    attempts_file = run_dir / "raw" / "attempts.jsonl"
+    observations: list[dict[str, Any]] = []
+
+    target_info = {
+        "id": "ox-alpha",
+        "slug": target_slug,
+        "label": "Ox Alpha",
+        "role": "target",
+    }
+
+    world_results = []
+    all_observed = []
+    all_expected = []
+    ordinal = 1
+
+    for w_idx, item in enumerate(holdouts, start=1):
+        w_data = item["world"]
+        world_obj = sd.SupportWorld(**w_data)
+        traj_items = [sd.TrajectoryIntervention(**t) for t in item["trajectory"]]
+        gt_vector = item["ground_truth"]
+
+        print(f"--- World [{w_idx}/{len(holdouts)}]: {world_obj.world_id} ({world_obj.target_entity} {world_obj.target_property}) ---")
+        observed_vector = []
+
+        for t_idx, interv in enumerate(traj_items, start=1):
+            probe_dict = {
+                "id": f"{world_obj.world_id}_{interv.condition_id}",
+                "label": f"{world_obj.world_id} {interv.label}",
+                "text": interv.prompt_text,
+            }
+            print(f"  [{t_idx:02d}/08] {interv.label} ... ", end="", flush=True)
+
+            obs = perform_request(
+                session,
+                api_key,
+                run_id,
+                ordinal,
+                target_info,
+                probe_dict,
+                envelope_id="envelope_a_minimal",
+                max_tokens=1024,
+                on_attempt=lambda rec: append_jsonl(attempts_file, rec),
+            )
+            ordinal += 1
+            row = asdict(obs)
+            observations.append(row)
+
+            raw_resp = ""
+            if obs.response_json and isinstance(obs.response_json, dict):
+                choices = obs.response_json.get("choices", [])
+                if choices:
+                    msg = choices[0].get("message", {})
+                    raw_resp = msg.get("content") or msg.get("reasoning") or ""
+
+            state = sd.parse_response_state(raw_resp)
+            observed_vector.append(state)
+            is_match = state == interv.expected_state
+            mark = "ok" if is_match else f"DIFF (got {state}, expected {interv.expected_state})"
+            print(f"{mark} · {obs.elapsed_ms:.0f} ms")
+
+        acc = sd.trajectory_accuracy(observed_vector, gt_vector)
+        all_observed.extend(observed_vector)
+        all_expected.extend(gt_vector)
+
+        world_results.append({
+            "world_id": world_obj.world_id,
+            "target": f"{world_obj.target_entity} {world_obj.target_property}",
+            "observed_vector": observed_vector,
+            "ground_truth_vector": gt_vector,
+            "accuracy": acc,
+        })
+
+    total_acc = sd.trajectory_accuracy(all_observed, all_expected)
+    cut_acc = sum(1 for i, res in enumerate(world_results) for j, c in enumerate([3, 5]) if res["observed_vector"][c] == "UNKNOWN") / (len(world_results) * 2)
+    surv_acc = sum(1 for i, res in enumerate(world_results) for j, c in enumerate([1, 2, 4]) if res["observed_vector"][c] == "ACTIVE") / (len(world_results) * 3)
+    rescue_acc = sum(1 for res in world_results if res["observed_vector"][6] == "ACTIVE") / len(world_results)
+    sham_acc = sum(1 for res in world_results if res["observed_vector"][7] == "ACTIVE") / len(world_results)
+
+    manifest_data = {
+        "run_id": run_id,
+        "kind": "support_dynamics_assay",
+        "target": target_info,
+        "firewall_status": "HOLDOUT",
+        "holdout_corpus_sha256": holdout_hash,
+        "created_at_utc": utc_now(),
+        "total_trajectories": len(world_results),
+        "total_requests": len(observations),
+    }
+    write_json(run_dir / "manifest.json", manifest_data)
+    write_jsonl(run_dir / "raw" / "observations.jsonl", observations)
+
+    summary = {
+        "run_id": run_id,
+        "target": target_slug,
+        "overall_trajectory_accuracy": total_acc,
+        "cut_retraction_sensitivity": cut_acc,
+        "alternative_support_survival": surv_acc,
+        "rescue_recovery_rate": rescue_acc,
+        "sham_invariance_rate": sham_acc,
+        "world_trajectories": world_results,
+    }
+    write_json(run_dir / "summary.json", summary)
+
+    report_html = render_dynamics_html(run_id, world_results, total_acc, cut_acc, surv_acc, rescue_acc, sham_acc)
+    report_path = run_dir / "report.html"
+    report_path.write_text(report_html, encoding="utf-8")
+
+    print("\n" + "=" * 60)
+    print("OXFORD EXPLORATION 2A: SUPPORT DYNAMICS RESULTS")
+    print("=" * 60)
+    print(f"Overall Trajectory Accuracy:      {total_acc * 100:.1f}%")
+    print(f"Complete Cut Sensitivity (-AC):   {cut_acc * 100:.1f}% (correctly dropped to UNKNOWN)")
+    print(f"Alternative Path Survival (-A):   {surv_acc * 100:.1f}% (correctly retained ACTIVE)")
+    print(f"Rescue Recovery Rate (+A):        {rescue_acc * 100:.1f}% (correctly re-activated)")
+    print(f"Sham Lexical Invariance (-E):     {sham_acc * 100:.1f}% (resisted false retraction)")
+    print("=" * 60)
+    print(f"HTML Report: {report_path}")
+    if open_report:
+        webbrowser.open(report_path.resolve().as_uri())
+    return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -2007,6 +2294,18 @@ def build_parser() -> argparse.ArgumentParser:
     remote.add_argument("--provider-order", nargs="+", help="Pin specific OpenRouter providers (e.g. --provider-order together deepinfra)")
     remote.add_argument("--no-fallback", action="store_true", help="Disable provider fallback")
 
+    # Exploration 2A: Causal Support Dynamics
+    dyn_synth = sub.add_parser("dynamics-synthesize", help="Synthesize Stage-5A support worlds with isomorphic twins and freeze top holdouts")
+    dyn_synth.add_argument("--count", type=int, default=30, help="Number of candidate worlds to generate (default 30)")
+    dyn_synth.add_argument("--top-k", type=int, default=8, help="Top K holdout trajectories to freeze (default 8)")
+    dyn_synth.add_argument("--seed", type=int, default=DEFAULT_SEED, help=f"Simulation seed (default {DEFAULT_SEED})")
+
+    dyn_assay = sub.add_parser("dynamics-assay", help="Run Exploration 2A causal support dynamics assay against target")
+    dyn_assay.add_argument("--holdout", type=str, dest="holdout_file", help="Path to frozen holdout JSON file")
+    dyn_assay.add_argument("--target", type=str, default="stealth/ox-alpha", help="Target model slug (default stealth/ox-alpha)")
+    dyn_assay.add_argument("--open", action="store_true", dest="open_report", help="Open report.html in browser")
+    dyn_assay.add_argument("--seed", type=int, default=DEFAULT_SEED, help=f"Seed for shuffle (default {DEFAULT_SEED})")
+
     # Local Assay (Ollama)
     local = sub.add_parser("local", help="Run local assays against Ollama")
     local.add_argument("--open", action="store_true", dest="open_report", help="Open report.html in browser")
@@ -2044,6 +2343,10 @@ def main() -> int:
         return command_synthesize_probes(args.count, args.top_k, args.seed)
     if args.command == "envelope":
         return command_envelope(args.open_report, args.seed)
+    if args.command == "dynamics-synthesize":
+        return command_dynamics_synthesize(args.count, args.top_k, args.seed)
+    if args.command == "dynamics-assay":
+        return command_dynamics_assay(args.open_report, args.seed, getattr(args, "holdout_file", None), args.target)
     if args.command in ("remote", "pilot"):
         return command_remote(
             seed=args.seed,
