@@ -52,7 +52,7 @@ class SupportDynamicsTests(unittest.TestCase):
         self.assertEqual(sd.parse_response_state("UNKNOWN"), "UNKNOWN")
         self.assertEqual(sd.parse_response_state("RETRACTED"), "RETRACTED")
         self.assertEqual(sd.parse_response_state("  Active.\n"), "ACTIVE")
-        self.assertEqual(sd.parse_response_state("The state is UNKNOWN"), "UNKNOWN")
+        self.assertEqual(sd.parse_response_state("The state is UNKNOWN"), "FORMAT_FAILURE")
         self.assertEqual(sd.parse_response_state(""), "FORMAT_FAILURE")
         self.assertEqual(sd.parse_response_state("I am an AI assistant and I think..."), "FORMAT_FAILURE")
 

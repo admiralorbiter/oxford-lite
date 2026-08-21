@@ -298,33 +298,17 @@ def generate_world_trajectory(world: SupportWorld) -> WorldTrajectory:
 
 
 def parse_response_state(response_text: str | None) -> str:
-    """Strictly parse the model's final answer content token.
+    """Strictly parse the model's categorical response token.
 
-    Requires explicit categorical output (ACTIVE, UNKNOWN, RETRACTED).
-    Returns FORMAT_FAILURE if the model failed to output a recognized state.
+    Requires explicit single-token output (ACTIVE, UNKNOWN, RETRACTED),
+    allowing only surrounding whitespace or trailing period normalization.
+    Any non-conformant or verbose output returns FORMAT_FAILURE.
     """
     if not response_text:
         return "FORMAT_FAILURE"
 
-    clean = response_text.strip().upper()
-    tokens = [t.strip(".,;:!?\"'()[]{}*`#") for t in clean.split()]
-
-    # Clean single-word answer
-    if len(tokens) == 1 and tokens[0] in VALID_OUTPUTS:
-        return tokens[0]
-
-    # Scan from the very end of tokens backwards
-    for tok in reversed(tokens):
-        if tok in VALID_OUTPUTS:
-            return tok
-
-    # Substring check on the last 40 characters
-    tail = clean[-40:] if len(clean) > 40 else clean
-    for v in ["ACTIVE", "UNKNOWN", "RETRACTED"]:
-        if v in tail:
-            return v
-
-    return "FORMAT_FAILURE"
+    clean = response_text.strip().upper().rstrip(".").strip()
+    return clean if clean in VALID_OUTPUTS else "FORMAT_FAILURE"
 
 
 def trajectory_distance(vec_a: list[str], vec_b: list[str]) -> float:
