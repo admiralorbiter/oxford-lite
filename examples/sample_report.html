@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OXFORD Lite · 20260821-220815-demo</title>
+<style>
+:root { --ink:#111827; --muted:#667085; --line:#e5e7eb; --paper:#ffffff; --wash:#f6f7f9; --accent:#1f4b99; --accent2:#7a3e9d; --good:#17633a; --warn:#8a4b08; }
+* { box-sizing:border-box; }
+body { margin:0; font-family:Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif; color:var(--ink); background:var(--wash); }
+.shell { max-width:1120px; margin:0 auto; padding:34px 22px 64px; }
+.hero { background:linear-gradient(135deg,#0f172a,#1f3a69 62%,#492f67); color:white; border-radius:22px; padding:30px 32px 28px; box-shadow:0 12px 35px rgba(15,23,42,.14); }
+.eyebrow { font-size:12px; letter-spacing:.14em; font-weight:800; opacity:.78; }
+h1 { margin:8px 0 4px; font-size:34px; letter-spacing:-.04em; }
+.sub { max-width:760px; color:#dbe4f2; line-height:1.55; }
+.badges { display:flex; flex-wrap:wrap; gap:8px; margin-top:18px; }
+.badge { display:inline-flex; border:1px solid rgba(255,255,255,.25); padding:6px 9px; border-radius:999px; font-size:12px; background:rgba(255,255,255,.08); }
+.grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin:18px 0; }
+.card { background:var(--paper); border:1px solid var(--line); border-radius:16px; padding:18px; box-shadow:0 4px 16px rgba(15,23,42,.035); }
+.card .k { color:var(--muted); font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; }
+.card .v { margin-top:7px; font-size:24px; font-weight:800; letter-spacing:-.03em; }
+section { background:var(--paper); border:1px solid var(--line); border-radius:16px; margin-top:14px; padding:22px; }
+h2 { margin:0 0 6px; font-size:20px; letter-spacing:-.02em; }
+p { line-height:1.6; }
+.muted { color:var(--muted); }
+.small { font-size:11px; color:var(--muted); margin-top:3px; }
+.mono { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; }
+table { width:100%; border-collapse:collapse; margin-top:14px; font-size:14px; }
+th { text-align:left; color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.06em; padding:10px 9px; border-bottom:1px solid var(--line); }
+td { padding:12px 9px; border-bottom:1px solid #eef0f3; vertical-align:top; }
+tr:last-child td { border-bottom:0; }
+.callout { border-left:4px solid var(--accent); padding:12px 14px; border-radius:8px; background:#f1f6ff; margin-top:14px; line-height:1.55; }
+.callout.demo { border-left-color:var(--accent2); background:#faf4ff; }
+.callout.warn { border-left-color:#c36b0a; background:#fff7ed; }
+.interpret { font-size:17px; line-height:1.6; }
+.boundary { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.boundary div { background:#fafafa; border:1px solid var(--line); border-radius:12px; padding:14px; }
+.footer { color:var(--muted); font-size:12px; margin:18px 3px 0; }
+@media(max-width:800px) { .grid { grid-template-columns:1fr 1fr; } .boundary { grid-template-columns:1fr; } }
+@media(max-width:520px) { .grid { grid-template-columns:1fr; } .hero { padding:24px 20px; } h1 { font-size:29px; } }
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="hero">
+    <div class="eyebrow">OXFORD · BLACK-BOX MODEL LINEAGE</div>
+    <h1>Structural fingerprint pilot</h1>
+    <div class="sub">A deliberately tiny plumbing test: six fresh prompts, three free model routes, differential prompt-token geometry, raw observations preserved.</div>
+    <div class="badges"><span class="badge">SYNTHETIC DEMO</span><span class="badge">PILOT · NOT CONFIRMATORY</span><span class="badge mono">20260821-220815-demo</span></div>
+  </div>
+  <div class='callout demo'><strong>Demo data.</strong> The values on this page are synthetic and exist only to test the report UI.</div>
+  
+  <div class="grid">
+    <div class="card"><div class="k">Successful requests</div><div class="v">18/18</div></div>
+    <div class="card"><div class="k">Closest tested model</div><div class="v" style="font-size:18px">GLM-5.2 (free)</div></div>
+    <div class="card"><div class="k">Exact normalized deltas</div><div class="v">5/5</div></div>
+    <div class="card"><div class="k">Shape MAE</div><div class="v">0.00</div></div>
+  </div>
+
+  <section>
+    <h2>What the pilot found</h2>
+    <p class="interpret">Synthetic demo only. No inference about Ox Alpha is permitted from these values.</p>
+  </section>
+
+  <section>
+    <h2>Pairwise structural comparison</h2>
+    <p class="muted">For each control, counts are normalized by subtracting the first common probe. A shared constant wrapper offset therefore disappears.</p>
+    <table>
+      <thead><tr><th>Ox Alpha vs.</th><th>Common</th><th>Exact deltas</th><th>Shape MAE</th><th>Constant offset</th><th>Offset span</th></tr></thead>
+      <tbody><tr><td><strong>GLM-5.2 (free)</strong></td><td>6</td><td>5/5 <span class='muted'>(100%)</span></td><td>0.00</td><td>Yes · +75 tokens</td><td>0</td></tr><tr><td><strong>Gemma 4 26B A4B (free)</strong></td><td>6</td><td>0/5 <span class='muted'>(0%)</span></td><td>5.80</td><td>No</td><td>10</td></tr></tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Observed prompt-token counts</h2>
+    <p class="muted">These are the API's reported prompt-token counts. Absolute counts are shown for auditability but are not treated as attribution by themselves.</p>
+    <table>
+      <thead><tr><th>Probe</th><th>Ox Alpha</th><th>GLM-5.2</th><th>Gemma 4</th></tr></thead>
+      <tbody><tr><td><strong>Mixed boundaries</strong><div class='mono small'>p01-mixed-boundaries</div></td><td>109</td><td>34</td><td>29</td></tr><tr><td><strong>Multiscript</strong><div class='mono small'>p02-multiscript</div></td><td>116</td><td>41</td><td>44</td></tr><tr><td><strong>Emoji + joiners</strong><div class='mono small'>p03-emoji-joiners</div></td><td>122</td><td>47</td><td>52</td></tr><tr><td><strong>Code syntax</strong><div class='mono small'>p04-code</div></td><td>125</td><td>50</td><td>46</td></tr><tr><td><strong>Structured identifiers</strong><div class='mono small'>p05-structured</div></td><td>120</td><td>45</td><td>49</td></tr><tr><td><strong>Repetition + whitespace</strong><div class='mono small'>p06-repetition</div></td><td>117</td><td>42</td><td>38</td></tr></tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Scientific boundary</h2>
+    <div class="boundary">
+      <div><strong>This pilot can tell us</strong><p class="muted">Whether the runner works, raw records are usable, the report communicates the result, and a tiny differential-token signal is worth scaling.</p></div>
+      <div><strong>This pilot cannot tell us</strong><p class="muted">Exact checkpoint, model operator, inference provider, calibrated probability, or publication-grade lineage attribution.</p></div>
+    </div>
+  </section>
+  <div class="footer">OXFORD Lite v0.1.0 · corpus SHA-256 07bacda0768b204e… · generated 2026-08-21T22:08:15+00:00</div>
+</div>
+</body>
+</html>

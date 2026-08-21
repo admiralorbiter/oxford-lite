@@ -1,0 +1,172 @@
+{
+  "pilot_version": "0.1.0",
+  "demo": true,
+  "generated_at_utc": "2026-08-21T22:08:15+00:00",
+  "requests_total": 18,
+  "requests_successful": 18,
+  "requests_failed": 0,
+  "counts": {
+    "ox-alpha": {
+      "p01-mixed-boundaries": 109,
+      "p02-multiscript": 116,
+      "p03-emoji-joiners": 122,
+      "p04-code": 125,
+      "p05-structured": 120,
+      "p06-repetition": 117
+    },
+    "glm-5.2": {
+      "p01-mixed-boundaries": 34,
+      "p02-multiscript": 41,
+      "p03-emoji-joiners": 47,
+      "p04-code": 50,
+      "p05-structured": 45,
+      "p06-repetition": 42
+    },
+    "gemma-4": {
+      "p01-mixed-boundaries": 29,
+      "p02-multiscript": 44,
+      "p03-emoji-joiners": 52,
+      "p04-code": 46,
+      "p05-structured": 49,
+      "p06-repetition": 38
+    }
+  },
+  "comparisons": [
+    {
+      "target_id": "ox-alpha",
+      "other_id": "glm-5.2",
+      "n_common": 6,
+      "probe_ids": [
+        "p01-mixed-boundaries",
+        "p02-multiscript",
+        "p03-emoji-joiners",
+        "p04-code",
+        "p05-structured",
+        "p06-repetition"
+      ],
+      "n_deltas": 5,
+      "offsets": {
+        "p01-mixed-boundaries": 75,
+        "p02-multiscript": 75,
+        "p03-emoji-joiners": 75,
+        "p04-code": 75,
+        "p05-structured": 75,
+        "p06-repetition": 75
+      },
+      "constant_offset": true,
+      "offset_value": 75,
+      "offset_span": 0,
+      "shape_exact_matches": 5,
+      "shape_match_ratio": 1.0,
+      "shape_mae": 0.0,
+      "shape_max_abs_error": 0,
+      "target_normalized": {
+        "p01-mixed-boundaries": 0,
+        "p02-multiscript": 7,
+        "p03-emoji-joiners": 13,
+        "p04-code": 16,
+        "p05-structured": 11,
+        "p06-repetition": 8
+      },
+      "other_normalized": {
+        "p01-mixed-boundaries": 0,
+        "p02-multiscript": 7,
+        "p03-emoji-joiners": 13,
+        "p04-code": 16,
+        "p05-structured": 11,
+        "p06-repetition": 8
+      }
+    },
+    {
+      "target_id": "ox-alpha",
+      "other_id": "gemma-4",
+      "n_common": 6,
+      "probe_ids": [
+        "p01-mixed-boundaries",
+        "p02-multiscript",
+        "p03-emoji-joiners",
+        "p04-code",
+        "p05-structured",
+        "p06-repetition"
+      ],
+      "n_deltas": 5,
+      "offsets": {
+        "p01-mixed-boundaries": 80,
+        "p02-multiscript": 72,
+        "p03-emoji-joiners": 70,
+        "p04-code": 79,
+        "p05-structured": 71,
+        "p06-repetition": 79
+      },
+      "constant_offset": false,
+      "offset_value": null,
+      "offset_span": 10,
+      "shape_exact_matches": 0,
+      "shape_match_ratio": 0.0,
+      "shape_mae": 5.8,
+      "shape_max_abs_error": 10,
+      "target_normalized": {
+        "p01-mixed-boundaries": 0,
+        "p02-multiscript": 7,
+        "p03-emoji-joiners": 13,
+        "p04-code": 16,
+        "p05-structured": 11,
+        "p06-repetition": 8
+      },
+      "other_normalized": {
+        "p01-mixed-boundaries": 0,
+        "p02-multiscript": 15,
+        "p03-emoji-joiners": 23,
+        "p04-code": 17,
+        "p05-structured": 20,
+        "p06-repetition": 9
+      }
+    }
+  ],
+  "strongest_structural_match": {
+    "target_id": "ox-alpha",
+    "other_id": "glm-5.2",
+    "n_common": 6,
+    "probe_ids": [
+      "p01-mixed-boundaries",
+      "p02-multiscript",
+      "p03-emoji-joiners",
+      "p04-code",
+      "p05-structured",
+      "p06-repetition"
+    ],
+    "n_deltas": 5,
+    "offsets": {
+      "p01-mixed-boundaries": 75,
+      "p02-multiscript": 75,
+      "p03-emoji-joiners": 75,
+      "p04-code": 75,
+      "p05-structured": 75,
+      "p06-repetition": 75
+    },
+    "constant_offset": true,
+    "offset_value": 75,
+    "offset_span": 0,
+    "shape_exact_matches": 5,
+    "shape_match_ratio": 1.0,
+    "shape_mae": 0.0,
+    "shape_max_abs_error": 0,
+    "target_normalized": {
+      "p01-mixed-boundaries": 0,
+      "p02-multiscript": 7,
+      "p03-emoji-joiners": 13,
+      "p04-code": 16,
+      "p05-structured": 11,
+      "p06-repetition": 8
+    },
+    "other_normalized": {
+      "p01-mixed-boundaries": 0,
+      "p02-multiscript": 7,
+      "p03-emoji-joiners": 13,
+      "p04-code": 16,
+      "p05-structured": 11,
+      "p06-repetition": 8
+    }
+  },
+  "interpretation": "Synthetic demo only. No inference about Ox Alpha is permitted from these values."
+}
