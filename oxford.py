@@ -3377,11 +3377,18 @@ def command_lineage_calibrate(open_report: bool = False) -> int:
         cog = prof["cognitive"]
         cal = prof["calibration"]
         sur = prof["surface"]
+        ovr = prof["overall_accuracy"]
         print(f"\nModel: {run_label}")
-        print(f"  Structural:  Tokenizer={prof['structural']['tokenizer_family']}")
-        print(f"  Cognitive:   Semantic Acc={cog['semantic_acc'][2]*100:5.1f}% ({cog['semantic_acc'][0]:03d}/{cog['semantic_acc'][1]:03d}) | C2 Retain={cog['c2_root_retention'][2]*100:5.1f}% ({cog['c2_root_retention'][0]:02d}/{cog['c2_root_retention'][1]:02d}) | F_abandon-={cog['F_abandon_minus'][2]*100:4.1f}% ({cog['F_abandon_minus'][0]:02d}/{cog['F_abandon_minus'][1]:02d}) [A->U={cog['F_A_to_U'][0]}, A->R={cog['F_A_to_R'][0]}] | F+={cog['F_plus_survival'][2]*100:4.1f}% ({cog['F_plus_survival'][0]:02d}/{cog['F_plus_survival'][1]:02d})")
-        print(f"  Calibration: F_false (Standard)={cal['F_false_standard'][2]*100:5.1f}% ({cal['F_false_standard'][0]:02d}/{cal['F_false_standard'][1]:02d})")
-        print(f"  Surface:     Strict Contract={sur['contract_adherence'][2]*100:5.1f}% ({sur['contract_adherence'][0]:03d}/{sur['contract_adherence'][1]:03d}) | Renderer Match={sur['renderer_stability'][2]*100:5.1f}% ({sur['renderer_stability'][0]:02d}/{sur['renderer_stability'][1]:02d})")
+        print(f"  Overall:     Evaluated N = {prof['total_evaluated']:03d} | Semantic Acc = {ovr[2]*100:5.1f}% ({ovr[0]:03d}/{ovr[1]:03d})")
+        print(f"  Structural:  Tokenizer = {prof['structural']['tokenizer_family']}")
+        print(f"  Cognitive:   C2 Retain = {cog['c2_root_retention'][2]*100:5.1f}% ({cog['c2_root_retention'][0]:02d}/{cog['c2_root_retention'][1]:02d}) | F_abandon- = {cog['F_abandon_minus'][2]*100:4.1f}% ({cog['F_abandon_minus'][0]:02d}/{cog['F_abandon_minus'][1]:02d}) [A->U={cog['F_A_to_U'][0]}, A->R={cog['F_A_to_R'][0]}] | F+ = {cog['F_plus_survival'][2]*100:4.1f}% ({cog['F_plus_survival'][0]:02d}/{cog['F_plus_survival'][1]:02d})")
+        if cal["F_cal_codebook"][1] > 0:
+            print(f"  Calibration: Codebook F_false (F_cal) = {cal['F_cal_codebook'][2]*100:5.1f}% ({cal['F_cal_codebook'][0]}/{cal['F_cal_codebook'][1]} paired)")
+        else:
+            print(f"  Calibration: Standard F_false = {cal['F_false_standard'][2]*100:5.1f}% ({cal['F_false_standard'][0]:02d}/{cal['F_false_standard'][1]:02d})")
+        
+        lbl_att = f" | Label Attraction (L_flip) = {sur['label_attraction_flip'][2]*100:5.1f}% ({sur['label_attraction_flip'][0]}/{sur['label_attraction_flip'][1]})" if sur['label_attraction_flip'][1] > 0 else ""
+        print(f"  Surface:     Strict Contract = {sur['contract_adherence'][2]*100:5.1f}% ({sur['contract_adherence'][0]:03d}/{sur['contract_adherence'][1]:03d}) | Renderer Match = {sur['renderer_stability'][2]*100:5.1f}% ({sur['renderer_stability'][0]:02d}/{sur['renderer_stability'][1]:02d}){lbl_att}")
 
     # 1. Pairwise Shared Distance Matrix
     print("\n" + "=" * 84)

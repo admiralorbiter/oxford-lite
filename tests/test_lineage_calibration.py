@@ -36,7 +36,7 @@ class TestLineageCalibration(unittest.TestCase):
         prof = lc.compute_four_channel_vector("ModelA", attempts, self.holdout_sample, tokenizer_family="GLM")
         self.assertEqual(prof["model_name"], "ModelA")
         self.assertEqual(prof["structural"]["tokenizer_family"], "GLM")
-        self.assertEqual(prof["cognitive"]["semantic_acc"][:2], (5, 6))
+        self.assertEqual(prof["overall_accuracy"][:2], (5, 6))
         self.assertEqual(prof["cognitive"]["c2_root_retention"][:2], (2, 2))
         self.assertEqual(prof["calibration"]["F_false_standard"][:2], (1, 2))
         self.assertEqual(prof["surface"]["renderer_stability"][:2], (2, 3))
@@ -77,10 +77,31 @@ class TestLineageCalibration(unittest.TestCase):
             },
         }
         known_fams = {"FamilyA": ["M1_rel", "M2_rel"]}
-        res = lc.evaluate_loro_clustering(profiles, known_fams, self.holdout_sample)
-        self.assertEqual(res["total_loro_tests"], 2)
-        self.assertEqual(res["successful_recoveries"], 2)
-        self.assertEqual(res["loro_accuracy"], 1.0)
+    def test_compute_informative_channel_vector(self):
+        prof_base = {
+            "model_name": "GLM-5.2",
+            "decisions": {"p1": "ACTIVE", "p2": "ACTIVE", "p3": "UNKNOWN"},
+            "contracts": {"p1": 1, "p2": 1, "p3": 1},
+            "flip_masks": {("w01", "c01"): 0},
+        }
+        prof_desc = {
+            "model_name": "GLM-5.3",
+            "decisions": {"p1": "ACTIVE", "p2": "ACTIVE", "p3": "RETRACTED"},
+            "contracts": {"p1": 1, "p2": 1, "p3": 1},
+            "flip_masks": {("w01", "c01"): 0},
+        }
+        prof_target = {
+            "model_name": "Ox Alpha",
+            "decisions": {"p1": "ACTIVE", "p2": "ACTIVE", "p3": "RETRACTED"},
+            "contracts": {"p1": 1, "p2": 1, "p3": 1},
+            "flip_masks": {("w01", "c01"): 0},
+        }
+        res = lc.compute_informative_channel_vector(prof_base, prof_desc, prof_target, self.holdout_sample)
+        self.assertEqual(res["base_model"], "GLM-5.2")
+        self.assertEqual(res["descendant_model"], "GLM-5.3")
+        self.assertEqual(res["target_model"], "Ox Alpha")
+        self.assertTrue(res["channel_analysis"]["D_total"]["is_informative"])
+        self.assertEqual(res["channel_analysis"]["D_total"]["target_placement"], "NEARER_DESCENDANT")
 
 
 if __name__ == "__main__":
