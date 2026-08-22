@@ -2347,11 +2347,14 @@ def render_boundary_html(
     results: list[dict[str, Any]],
     overall_accuracy: float,
     mean_stability: float,
+    repeat_stability: float,
     indep_accuracy: float,
     shared_accuracy: float,
     launder_accuracy: float,
+    depth_stats: dict[int, dict[str, float]],
+    error_decomp: dict[str, float],
 ) -> str:
-    """Render interactive HTML report for Exploration 2B boundary assay."""
+    """Render interactive HTML report for Exploration 2B.1 boundary assay."""
     rows = []
     for res in results:
         w_id = html.escape(res["world_id"])
@@ -2370,7 +2373,6 @@ def render_boundary_html(
         for obs, exp in zip(obs_vec, gt_vec):
             cls = "badge-good" if obs == exp else "badge-bad"
             cells_base.append(f"<td><span class='badge {cls}'>{html.escape(obs)}</span></td>")
-        # Pad with empty cells if fewer than max conditions
         for _ in range(6 - len(obs_vec)):
             cells_base.append("<td><span class='small muted'>—</span></td>")
         cells_base.append(f"<td rowspan='2'><strong>{acc * 100:.0f}%</strong></td>")
@@ -2385,25 +2387,34 @@ def render_boundary_html(
             cells_twin.append("<td><span class='small muted'>—</span></td>")
         rows.append("<tr style='background:rgba(0,0,0,0.015);'>" + "".join(cells_twin) + "</tr>")
 
+    depth_rows = []
+    for d, s in depth_stats.items():
+        depth_rows.append(
+            f"<tr><td><strong>d = {d}</strong></td>"
+            f"<td>{s['canonical_acc'] * 100:.1f}%</td>"
+            f"<td>{s['twin_acc'] * 100:.1f}%</td>"
+            f"<td><strong>{s['stability'] * 100:.1f}%</strong></td></tr>"
+        )
+
     return f"""<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>OXFORD Boundary &amp; Laundering · {html.escape(run_id)}</title>
+<title>OXFORD Boundary &amp; Laundering E2B.1 · {html.escape(run_id)}</title>
 <style>
-:root {{ --ink:#111827; --muted:#667085; --line:#e5e7eb; --paper:#ffffff; --wash:#f6f7f9; --accent:#7a3e9d; --good:#166534; --bad:#991b1b; }}
+:root {{ --ink:#111827; --muted:#667085; --line:#e5e7eb; --paper:#ffffff; --wash:#f6f7f9; --good:#166534; --bad:#991b1b; }}
 * {{ box-sizing:border-box; }}
 body {{ margin:0; font-family:Inter, ui-sans-serif, system-ui, sans-serif; color:var(--ink); background:var(--wash); }}
-.shell {{ max-width:1120px; margin:0 auto; padding:34px 22px 64px; }}
+.shell {{ max-width:1160px; margin:0 auto; padding:34px 22px 64px; }}
 .hero {{ background:linear-gradient(135deg,#064e3b,#047857 62%,#0f766e); color:white; border-radius:22px; padding:30px 32px 28px; box-shadow:0 12px 35px rgba(6,78,59,.14); }}
 .eyebrow {{ font-size:12px; letter-spacing:.14em; font-weight:800; opacity:.78; }}
 h1 {{ margin:8px 0 4px; font-size:34px; letter-spacing:-.04em; }}
 .sub {{ max-width:760px; color:#d1fae5; line-height:1.55; }}
-.grid {{ display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin:18px 0; }}
-.card {{ background:var(--paper); border:1px solid var(--line); border-radius:16px; padding:16px; }}
+.grid {{ display:grid; grid-template-columns:repeat(6,1fr); gap:12px; margin:18px 0; }}
+.card {{ background:var(--paper); border:1px solid var(--line); border-radius:16px; padding:14px; }}
 .card .k {{ color:var(--muted); font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; }}
-.card .v {{ margin-top:6px; font-size:22px; font-weight:800; }}
+.card .v {{ margin-top:6px; font-size:20px; font-weight:800; }}
 section {{ background:var(--paper); border:1px solid var(--line); border-radius:16px; margin-top:14px; padding:22px; }}
 table {{ width:100%; border-collapse:collapse; margin-top:14px; font-size:13px; }}
 th {{ text-align:left; color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.06em; padding:10px 8px; border-bottom:1px solid var(--line); }}
@@ -2418,17 +2429,39 @@ td {{ padding:8px; border-bottom:1px solid #eef0f3; vertical-align:middle; }}
 <body>
 <div class="shell">
   <div class="hero">
-    <div class="eyebrow">OXFORD · EXPLORATION 2B</div>
-    <h1>Lineage Laundering &amp; Depth Failure Boundary</h1>
-    <div class="sub">Testing epistemic collapse under Shared Ancestry, Laundered Echo derivative reports, and Derivation Depth (d=2..5).</div>
+    <div class="eyebrow">OXFORD · EXPLORATION 2B.1</div>
+    <h1>Formal Support Boundary &amp; Lineage Laundering Assay</h1>
+    <div class="sub">Formal Horn derivation chains, multi-hop shared ancestry DAGs, and lineage laundering collapse.</div>
   </div>
 
   <div class="grid">
     <div class="card"><div class="k">Overall Accuracy</div><div class="v">{overall_accuracy * 100:.1f}%</div></div>
-    <div class="card"><div class="k">Isomorphic Stability</div><div class="v">{mean_stability * 100:.1f}%</div></div>
-    <div class="card"><div class="k">Independent (d=2..5)</div><div class="v">{indep_accuracy * 100:.0f}%</div></div>
-    <div class="card"><div class="k">Shared Root Collapse</div><div class="v">{shared_accuracy * 100:.0f}%</div></div>
-    <div class="card"><div class="k">Laundered Echo Collapse</div><div class="v">{launder_accuracy * 100:.0f}%</div></div>
+    <div class="card"><div class="k">Isomorphic Stab</div><div class="v">{mean_stability * 100:.1f}%</div></div>
+    <div class="card"><div class="k">Exact Repeat Stab</div><div class="v">{repeat_stability * 100:.1f}%</div></div>
+    <div class="card"><div class="k">Indep (d=2..5)</div><div class="v">{indep_accuracy * 100:.0f}%</div></div>
+    <div class="card"><div class="k">Shared Root</div><div class="v">{shared_accuracy * 100:.0f}%</div></div>
+    <div class="card"><div class="k">Laundered Echo</div><div class="v">{launder_accuracy * 100:.0f}%</div></div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:14px;">
+    <section style="margin-top:0;">
+      <h3 style="margin-top:0;">Depth × Representation Interaction</h3>
+      <table>
+        <thead><tr><th>Derivation Depth</th><th>Canonical Acc (W)</th><th>Twin Acc (W')</th><th>Stability</th></tr></thead>
+        <tbody>{''.join(depth_rows)}</tbody>
+      </table>
+    </section>
+    <section style="margin-top:0;">
+      <h3 style="margin-top:0;">Error Polarity Decomposition</h3>
+      <table>
+        <thead><tr><th>Error Metric</th><th>Definition</th><th>Rate</th></tr></thead>
+        <tbody>
+          <tr><td><strong>False Survival (F+)</strong></td><td>P(ACTIVE | UNKNOWN expected)</td><td>{error_decomp['false_survival_rate'] * 100:.1f}%</td></tr>
+          <tr><td><strong>False Retraction (F-)</strong></td><td>P(UNKNOWN | ACTIVE expected)</td><td>{error_decomp['false_retraction_rate'] * 100:.1f}%</td></tr>
+          <tr><td><strong>Format Failure (Ffmt)</strong></td><td>Non-token / reasoning overflow</td><td>{error_decomp['format_failure_rate'] * 100:.1f}%</td></tr>
+        </tbody>
+      </table>
+    </section>
   </div>
 
   <section>
@@ -2462,7 +2495,7 @@ def command_boundary_assay(
     holdout_file: str | None = None,
     target_slug: str = "stealth/ox-alpha",
 ) -> int:
-    """Execute Exploration 2B lineage laundering and depth boundary assay."""
+    """Execute Exploration 2B.1 formal graph lineage laundering and depth boundary assay."""
     from assays import support_boundary as sb
 
     load_dotenv(ROOT / ".env")
@@ -2490,7 +2523,7 @@ def command_boundary_assay(
         "role": "target",
     }
 
-    print("OXFORD Exploration 2B: Lineage Laundering & Depth Boundary Assay")
+    print("OXFORD Exploration 2B.1: Formal Support Boundary & Lineage Laundering Assay")
     print(f"Target: {target_slug}")
     print(f"Loaded {len(holdouts)} frozen boundary holdouts with paired twins (SHA-256={holdout_hash[:16]}...)")
     print(f"Run folder: {run_dir}\n")
@@ -2503,7 +2536,11 @@ def command_boundary_assay(
     all_observed = []
     all_expected = []
     stabilities = []
+    repeat_matches = []
     ordinal = 1
+
+    # Track repeat controls at depths d=2,3,4,5
+    repeat_depth_checkpoints = {2: False, 3: False, 4: False, 5: False}
 
     for w_idx, item in enumerate(holdouts, start=1):
         world_obj = sb.BoundaryWorld(**item["world"])
@@ -2552,6 +2589,34 @@ def command_boundary_assay(
                 is_match = state == interv.expected_state
                 mark = "ok" if is_match else f"DIFF (got {state}, expected {interv.expected_state})"
                 print(f"{mark} · {obs.elapsed_ms:.0f} ms")
+
+                # Exact Repeat Control Checkpoint (1 per independent depth)
+                if world_obj.mode == "INDEPENDENT" and not obj.is_twin and t_idx == 1 and not repeat_depth_checkpoints.get(world_obj.depth, True):
+                    repeat_depth_checkpoints[world_obj.depth] = True
+                    print(f"      [Repeat Control d={world_obj.depth}] Querying identical base prompt again ... ", end="", flush=True)
+                    obs_rep = perform_request(
+                        session,
+                        api_key,
+                        run_id,
+                        ordinal,
+                        target_info,
+                        probe_dict,
+                        envelope_id="envelope_a_minimal",
+                        max_tokens=1024,
+                        on_attempt=lambda rec: append_jsonl(attempts_file, rec),
+                    )
+                    ordinal += 1
+                    observations.append(asdict(obs_rep))
+                    raw_rep_resp = ""
+                    if obs_rep.response_json and isinstance(obs_rep.response_json, dict):
+                        choices_rep = obs_rep.response_json.get("choices", [])
+                        if choices_rep:
+                            raw_rep_resp = choices_rep[0].get("message", {}).get("content") or ""
+                    state_rep = sb.parse_response_state(raw_rep_resp)
+                    rep_is_match = (state == state_rep)
+                    repeat_matches.append(rep_is_match)
+                    print(f"{'MATCH' if rep_is_match else 'DRIFT'} (1st={state}, 2nd={state_rep}) · {obs_rep.elapsed_ms:.0f} ms")
+
             return obs_vec
 
         if run_base_first:
@@ -2582,12 +2647,15 @@ def command_boundary_assay(
             "observed_vector": observed_vector,
             "twin_observed_vector": twin_observed_vector,
             "ground_truth_vector": gt_vector,
+            "canonical_accuracy": acc_base,
+            "twin_accuracy": acc_twin,
             "accuracy": mean_world_acc,
             "stability": stability,
         })
 
     total_acc = sb.trajectory_accuracy(all_observed, all_expected)
     mean_stab = statistics.fmean(stabilities) if stabilities else 1.0
+    repeat_stab = sum(1 for m in repeat_matches if m) / len(repeat_matches) if repeat_matches else 1.0
 
     ind_results = [r for r in world_results if r["mode"] == "INDEPENDENT"]
     shared_results = [r for r in world_results if r["mode"] == "SHARED_ROOT"]
@@ -2597,15 +2665,47 @@ def command_boundary_assay(
     shared_acc = statistics.fmean([r["accuracy"] for r in shared_results]) if shared_results else 0.0
     launder_acc = statistics.fmean([r["accuracy"] for r in launder_results]) if launder_results else 0.0
 
+    # Depth Breakdown for INDEPENDENT
+    depth_stats = {}
+    for d in [2, 3, 4, 5]:
+        d_res = [r for r in ind_results if r["depth"] == d]
+        if d_res:
+            c_acc = statistics.fmean([r["canonical_accuracy"] for r in d_res])
+            t_acc = statistics.fmean([r["twin_accuracy"] for r in d_res])
+            d_stab = statistics.fmean([r["stability"] for r in d_res])
+            depth_stats[d] = {
+                "canonical_acc": c_acc,
+                "twin_acc": t_acc,
+                "stability": d_stab,
+            }
+
+    # Error Polarity Decomposition
+    # F+ = P(ACTIVE | UNKNOWN expected)
+    # F- = P(UNKNOWN | ACTIVE expected)
+    # F_fmt = P(FORMAT_FAILURE)
+    unknown_expected_pairs = [(obs, exp) for obs, exp in zip(all_observed, all_expected) if exp == "UNKNOWN"]
+    active_expected_pairs = [(obs, exp) for obs, exp in zip(all_observed, all_expected) if exp == "ACTIVE"]
+
+    f_plus = sum(1 for obs, _ in unknown_expected_pairs if obs == "ACTIVE") / len(unknown_expected_pairs) if unknown_expected_pairs else 0.0
+    f_minus = sum(1 for obs, _ in active_expected_pairs if obs == "UNKNOWN") / len(active_expected_pairs) if active_expected_pairs else 0.0
+    f_fmt = sum(1 for obs in all_observed if obs == "FORMAT_FAILURE") / len(all_observed) if all_observed else 0.0
+
+    error_decomp = {
+        "false_survival_rate": f_plus,
+        "false_retraction_rate": f_minus,
+        "format_failure_rate": f_fmt,
+    }
+
     manifest_data = {
         "run_id": run_id,
-        "kind": "support_boundary_assay",
+        "kind": "support_boundary_assay_e2b1",
         "target": target_info,
         "firewall_status": "HOLDOUT",
         "holdout_corpus_sha256": holdout_hash,
         "created_at_utc": utc_now(),
         "total_trajectories": len(world_results) * 2,
         "total_requests": len(observations),
+        "repeat_controls_tested": len(repeat_matches),
     }
     write_json(run_dir / "manifest.json", manifest_data)
     write_jsonl(run_dir / "raw" / "observations.jsonl", observations)
@@ -2615,26 +2715,41 @@ def command_boundary_assay(
         "target": target_slug,
         "overall_trajectory_accuracy": total_acc,
         "within_model_isomorphic_stability": mean_stab,
+        "exact_repeat_stability": repeat_stab,
         "independent_depth_accuracy": ind_acc,
         "shared_root_collapse_accuracy": shared_acc,
         "laundered_echo_collapse_accuracy": launder_acc,
+        "depth_breakdown": depth_stats,
+        "error_polarity_decomposition": error_decomp,
         "world_trajectories": world_results,
     }
     write_json(run_dir / "summary.json", summary)
 
-    report_html = render_boundary_html(run_id, world_results, total_acc, mean_stab, ind_acc, shared_acc, launder_acc)
+    report_html = render_boundary_html(
+        run_id, world_results, total_acc, mean_stab, repeat_stab, ind_acc, shared_acc, launder_acc, depth_stats, error_decomp
+    )
     report_path = run_dir / "report.html"
     report_path.write_text(report_html, encoding="utf-8")
 
-    print("=" * 65)
-    print("OXFORD EXPLORATION 2B: BOUNDARY & LAUNDERING RESULTS")
-    print("=" * 65)
+    print("=" * 68)
+    print("OXFORD EXPLORATION 2B.1: FORMAL SUPPORT BOUNDARY RESULTS")
+    print("=" * 68)
     print(f"Overall Trajectory Accuracy:        {total_acc * 100:.1f}%")
     print(f"Within-Model Isomorphic Stability:  {mean_stab * 100:.1f}% (invariance across permuted twins)")
+    print(f"Exact-Prompt Repeat Stability:      {repeat_stab * 100:.1f}% (target serving noise floor)")
     print(f"Independent Multi-Depth (d=2..5):   {ind_acc * 100:.1f}%")
     print(f"Shared Root Collapse Tracking:      {shared_acc * 100:.1f}%")
     print(f"Laundered Echo Collapse Tracking:   {launder_acc * 100:.1f}%")
-    print("=" * 65)
+    print("-" * 68)
+    print("Depth × Representation Breakdown (Independent Chains):")
+    for d, s in depth_stats.items():
+        print(f"  d={d}: Canonical={s['canonical_acc']*100:.0f}%, Twin={s['twin_acc']*100:.0f}%, Stability={s['stability']*100:.0f}%")
+    print("-" * 68)
+    print("Error Polarity Decomposition:")
+    print(f"  False Survival   (F+ = P(ACTIVE | UNKNOWN exp)): {f_plus * 100:.1f}%")
+    print(f"  False Retraction (F- = P(UNKNOWN | ACTIVE exp)): {f_minus * 100:.1f}%")
+    print(f"  Format Failure   (Ffmt = reasoning overflow):   {f_fmt * 100:.1f}%")
+    print("=" * 68)
     print(f"HTML Report: {report_path}")
     if open_report:
         webbrowser.open(report_path.resolve().as_uri())
