@@ -3327,6 +3327,75 @@ def command_label_invariance_assay(
     return 0
 
 
+def command_lineage_calibrate(open_report: bool = False) -> int:
+    """Execute Four-Channel Lineage Calibration and LORO Validation across all runs."""
+    from assays import lineage_calibration as lc
+
+    h_path = HOLDOUT_ACQUISITION_FILE
+    if not h_path.exists():
+        print(f"Acquisition holdout file not found: {h_path}.", file=sys.stderr)
+        return 2
+
+    holdouts = json.loads(h_path.read_text(encoding="utf-8"))
+
+    discovered_runs = {}
+    if RUNS_DIR.exists():
+        for run_path in sorted(RUNS_DIR.iterdir(), key=lambda d: d.name):
+            if run_path.is_dir() and "acquisition" in run_path.name:
+                manifest_file = run_path / "manifest.json"
+                target_name = None
+                if manifest_file.exists():
+                    try:
+                        m = json.loads(manifest_file.read_text(encoding="utf-8"))
+                        target_info = m.get("target", {})
+                        target_name = target_info.get("slug") or target_info.get("label")
+                    except Exception:
+                        pass
+                attempts = lc.load_run_attempts(run_path)
+                if not target_name and attempts:
+                    first_att = next(iter(attempts.values()))
+                    target_name = first_att.get("model_slug") or first_att.get("target", {}).get("slug") or first_att.get("model_id")
+                if not target_name:
+                    target_name = run_path.name
+                if attempts:
+                    discovered_runs[f"{target_name} ({run_path.name})"] = (attempts, target_name)
+
+    if not discovered_runs:
+        print("No acquisition runs found in runs/ folder.", file=sys.stderr)
+        return 1
+
+    print("=" * 78)
+    print("OXFORD FOUR-CHANNEL LINEAGE CALIBRATION & LORO ENGINE")
+    print(f"Discovered {len(discovered_runs)} acquisition runs across models")
+    print("=" * 78)
+
+    profiles = {}
+    for run_label, (attempts, target_slug) in discovered_runs.items():
+        tok_family = "GLM" if "ox" in target_slug.lower() or "glm" in target_slug.lower() else "UNKNOWN"
+        prof = lc.compute_four_channel_vector(run_label, attempts, holdouts, tokenizer_family=tok_family)
+        profiles[run_label] = prof
+        print(f"\nModel: {run_label}")
+        print(f"  Structural:  Tokenizer={prof['structural']['tokenizer_family']}")
+        print(f"  Cognitive:   Semantic Acc={prof['cognitive']['semantic_acc']*100:.1f}% | C2 Retention={prof['cognitive']['c2_root_retention']*100:.1f}% | F-={prof['cognitive']['false_retraction']*100:.1f}% | F+={prof['cognitive']['false_survival']*100:.1f}%")
+        print(f"  Calibration: F_false (Standard)={prof['calibration']['false_falsification_standard']*100:.1f}%")
+        print(f"  Surface:     Strict Contract={prof['surface']['contract_adherence']*100:.1f}% | Renderer Match={prof['surface']['renderer_stability']*100:.1f}%")
+
+    print("\n" + "=" * 78)
+    print("PAIRWISE SHARED DISTANCE MATRIX")
+    print("=" * 78)
+    print(f"{'Pairwise Models (A <-> B)':<44} | {'Shared N':<8} | {'D_total':<8} | {'D_acq':<8} | {'D_contract':<10}")
+    print("-" * 78)
+    model_keys = list(profiles.keys())
+    for i in range(len(model_keys)):
+        for j in range(i + 1, len(model_keys)):
+            m1, m2 = model_keys[i], model_keys[j]
+            dists = lc.compute_pairwise_distances(profiles[m1], profiles[m2], holdouts)
+            print(f"{m1[:20]} <-> {m2[:20]:<20} | {dists['n_shared']:<8} | {dists['D_total']*100:5.1f}%  | {dists['D_acq']*100:5.1f}%  | {dists['D_contract']*100:5.1f}%")
+
+    print("=" * 78)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="oxford.py",
@@ -3432,6 +3501,10 @@ def build_parser() -> argparse.ArgumentParser:
     lbl_assay.add_argument("--paid", action="store_true", help="Use paid model route (strips :free suffix)")
     lbl_assay.add_argument("--delay", type=float, default=DEFAULT_DELAY, help=f"Delay between calls in seconds (default {DEFAULT_DELAY})")
 
+    # Exploration 3D: Lineage Calibration
+    lin_cal = sub.add_parser("lineage-calibrate", help="Run Four-Channel Lineage Calibration and LORO evaluation across all runs")
+    lin_cal.add_argument("--open", action="store_true", dest="open_report", help="Open report.html in browser")
+
     # Local Assay (Ollama)
     local = sub.add_parser("local", help="Run local assays against Ollama")
     local.add_argument("--open", action="store_true", dest="open_report", help="Open report.html in browser")
@@ -3510,6 +3583,10 @@ def main() -> int:
             args.target,
             getattr(args, "paid", False),
             getattr(args, "delay", 0.0),
+        )
+    if args.command == "lineage-calibrate":
+        return command_lineage_calibrate(
+            getattr(args, "open_report", False),
         )
     if args.command in ("remote", "pilot"):
         return command_remote(
