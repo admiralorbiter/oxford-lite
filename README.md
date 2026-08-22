@@ -138,22 +138,49 @@ $$F_M(W) = [y_{\text{base}}, y_{-A}, y_{-C}, y_{-AC}, y_{-AB}, y_{-ABC}, y_{\tex
 - **Lexical vs Support Invariance (Sham)**: Retracts an unrelated distractor fact $E$ to separate true intervention-consistent support reasoning from superficial keyword sensitivity.
 - **Permanent Calibration Fixture**: Frozen as `support-dynamics-elementary-v1` (`worlds/holdout/support_dynamics_holdout.json`, SHA-256 committed before target evaluation).
 
-### Run Dynamics Commands:
-
 ```bash
-# 1. Synthesize candidate worlds and freeze holdout fixture
-python oxford.py dynamics-synthesize --count 30 --top-k 3
-
-# 2. Run causal support dynamics assay against target
+# Run causal support dynamics assay against target
 python oxford.py dynamics-assay --open
 ```
 
 ---
 
-## Epistemic Ledger & Scientific Boundary
+## Exploration 3: Latent Support Acquisition & Four-Channel Lineage Forensics
 
-- **Structural Channel ($F_M^{\text{structural}}$)**: Constant wrapper overhead $k$ drops out under differential baseline subtraction. Matching tokenizer geometry indicates compatible tokenizer/vocab boundaries.
-- **Dynamic Channel ($F_M^{\text{dynamic}}$)**: Paired response trajectories across causal interventions capture counterfactual failure/survival topologies.
-- **Attribution Boundary**: Structural and causal phenotypes narrow model lineage and post-training families without premature claims regarding serving infrastructure or host operator identity.
+Exploration 3 decomposes model similarity into four distinct, orthogonal evidence channels:
+1. **Structural Channel ($\mathcal{F}^{\text{structural}}$)**: Tokenizer geometry, byte merges, and vocabulary serialization.
+2. **Cognitive Channel ($\mathcal{F}^{\text{cognitive}}$)**: Minimal-support graph acquisition, independent root retention, and transition dynamics ($F_{\text{abandon}}^-, F_{A \to U}, F_{A \to R}, F^+, RIC(e)$).
+3. **Calibration Channel ($\mathcal{F}^{\text{calibration}}$)**: Latent epistemic state mapping under paired label-decoupled codebooks ($F_{\text{cal}} = F_{\text{false}}^{\text{codebook}}$).
+4. **Surface Channel ($\mathcal{F}^{\text{surface}}$)**: Strict schema compliance ($K_M$), localized renderer-flip distributions ($R_M$), and paired ontology label attraction ($L_M^{\text{flip}}$).
+
+### Commands:
+
+```bash
+# 1. Run support acquisition assay on target model
+python oxford.py acquisition-assay --target stealth/ox-alpha
+
+# 2. Run paired label invariance assay (Exploration 3C)
+python oxford.py label-invariance --target stealth/ox-alpha
+
+# 3. Compile four-channel calibration ledger & distance matrices
+python oxford.py lineage-calibrate
+```
+
+---
+
+## Exploration 4: Normative Pressure & Post-Training Morphology
+
+Adapted from the IMPACT research architecture, Exploration 4 evaluates post-training alignment morphology across standardized institutional pressures (Authority, Metric/KPI, Incentive, Social Consensus, and Corrective Evidence):
+- **Morphology States**: Resistance ($R$), Assimilation ($A$), Compartmentalized Compliance ($C$), Judgment-Only Shift ($J$).
+- **Estimands**: Pressure Selectivity ($|\Delta_{\text{Evidence}}| \gg |\Delta_{\text{Pressure}}|$) and Option Invariance ($O_M$).
+
+---
+
+## Epistemic Ledger & Scientific Boundaries
+
+- **Structural Channel**: Constant wrapper overhead $k$ drops out under differential baseline subtraction. Matching tokenizer geometry indicates compatible tokenizer/vocab boundaries.
+- **Cognitive Sibling Attribution**: Sibling-discordant cells ($\mathcal{S}_k^*$) and signed branch index ($B_k$) place candidate targets on known post-training transitions.
+- **Attribution Boundary**: Structural, cognitive, and multimodal phenotypes narrow model lineage and post-training families without premature claims regarding hosting infrastructure or commercial product mappings.
 
 See [`docs/PILOT_PROTOCOL.md`](file:///c:/Users/admir/Github/oxford-lite/docs/PILOT_PROTOCOL.md) for the complete scientific protocol.
+
