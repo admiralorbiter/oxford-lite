@@ -3374,25 +3374,50 @@ def command_lineage_calibrate(open_report: bool = False) -> int:
         tok_family = "GLM" if "ox" in target_slug.lower() or "glm" in target_slug.lower() else "UNKNOWN"
         prof = lc.compute_four_channel_vector(run_label, attempts, holdouts, tokenizer_family=tok_family)
         profiles[run_label] = prof
+        cog = prof["cognitive"]
+        cal = prof["calibration"]
+        sur = prof["surface"]
         print(f"\nModel: {run_label}")
         print(f"  Structural:  Tokenizer={prof['structural']['tokenizer_family']}")
-        print(f"  Cognitive:   Semantic Acc={prof['cognitive']['semantic_acc']*100:.1f}% | C2 Retention={prof['cognitive']['c2_root_retention']*100:.1f}% | F-={prof['cognitive']['false_retraction']*100:.1f}% | F+={prof['cognitive']['false_survival']*100:.1f}%")
-        print(f"  Calibration: F_false (Standard)={prof['calibration']['false_falsification_standard']*100:.1f}%")
-        print(f"  Surface:     Strict Contract={prof['surface']['contract_adherence']*100:.1f}% | Renderer Match={prof['surface']['renderer_stability']*100:.1f}%")
+        print(f"  Cognitive:   Semantic Acc={cog['semantic_acc'][2]*100:5.1f}% ({cog['semantic_acc'][0]:03d}/{cog['semantic_acc'][1]:03d}) | C2 Retain={cog['c2_root_retention'][2]*100:5.1f}% ({cog['c2_root_retention'][0]:02d}/{cog['c2_root_retention'][1]:02d}) | F-={cog['false_retraction'][2]*100:4.1f}% ({cog['false_retraction'][0]:02d}/{cog['false_retraction'][1]:02d}) | F+={cog['false_survival'][2]*100:4.1f}% ({cog['false_survival'][0]:02d}/{cog['false_survival'][1]:02d})")
+        print(f"  Calibration: F_false (Standard)={cal['false_falsification_standard'][2]*100:5.1f}% ({cal['false_falsification_standard'][0]:02d}/{cal['false_falsification_standard'][1]:02d})")
+        print(f"  Surface:     Strict Contract={sur['contract_adherence'][2]*100:5.1f}% ({sur['contract_adherence'][0]:03d}/{sur['contract_adherence'][1]:03d}) | Renderer Match={sur['renderer_stability'][2]*100:5.1f}% ({sur['renderer_stability'][0]:02d}/{sur['renderer_stability'][1]:02d})")
 
-    print("\n" + "=" * 78)
-    print("PAIRWISE SHARED DISTANCE MATRIX")
-    print("=" * 78)
-    print(f"{'Pairwise Models (A <-> B)':<44} | {'Shared N':<8} | {'D_total':<8} | {'D_acq':<8} | {'D_contract':<10}")
-    print("-" * 78)
+    # 1. Pairwise Shared Distance Matrix
+    print("\n" + "=" * 84)
+    print("PAIRWISE SHARED DISTANCE MATRIX (Computed strictly across shared evaluated cells)")
+    print("=" * 84)
+    print(f"{'Pairwise Models (A <-> B)':<38} | {'Shared N':<8} | {'D_total':<14} | {'D_acq':<14} | {'D_contract':<14}")
+    print("-" * 84)
     model_keys = list(profiles.keys())
     for i in range(len(model_keys)):
         for j in range(i + 1, len(model_keys)):
             m1, m2 = model_keys[i], model_keys[j]
             dists = lc.compute_pairwise_distances(profiles[m1], profiles[m2], holdouts)
-            print(f"{m1[:20]} <-> {m2[:20]:<20} | {dists['n_shared']:<8} | {dists['D_total']*100:5.1f}%  | {dists['D_acq']*100:5.1f}%  | {dists['D_contract']*100:5.1f}%")
+            m1_name = m1.split()[0]
+            m2_name = m2.split()[0]
+            pair_lbl = f"{m1_name} <-> {m2_name}"
+            d_tot = dists["D_total"]
+            d_acq = dists["D_acq"]
+            d_con = dists["D_contract"]
+            print(f"{pair_lbl:<38} | {dists['n_shared']:<8} | {d_tot[2]*100:5.1f}% ({d_tot[0]:02d}/{d_tot[1]:02d}) | {d_acq[2]*100:5.1f}% ({d_acq[0]:02d}/{d_acq[1]:02d}) | {d_con[2]*100:5.1f}% ({d_con[0]:02d}/{d_con[1]:02d})")
 
-    print("=" * 78)
+    # 2. Common Cells Matrix
+    common_res = lc.compute_common_cells_matrix(profiles, holdouts)
+    if common_res and common_res.get("matrix"):
+        print("-" * 84)
+        print(f"COMMON-CELLS DISTANCE MATRIX (N = {common_res['n_common_cells']} decisions evaluable by ALL models):")
+        print(f"{'Pairwise Models (A <-> B)':<38} | {'D_total^common':<16} | {'D_acq^common':<16} | {'D_contract^common':<16}")
+        print("-" * 84)
+        for (m1, m2), m_dists in common_res["matrix"].items():
+            m1_name = m1.split()[0]
+            m2_name = m2.split()[0]
+            pair_lbl = f"{m1_name} <-> {m2_name}"
+            d_tot = m_dists["D_total"]
+            d_acq = m_dists["D_acq"]
+            d_con = m_dists["D_contract"]
+            print(f"{pair_lbl:<38} | {d_tot[2]*100:5.1f}% ({d_tot[0]:02d}/{d_tot[1]:02d})  | {d_acq[2]*100:5.1f}% ({d_acq[0]:02d}/{d_acq[1]:02d})  | {d_con[2]*100:5.1f}% ({d_con[0]:02d}/{d_con[1]:02d})")
+    print("=" * 84)
     return 0
 
 

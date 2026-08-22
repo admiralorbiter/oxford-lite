@@ -36,31 +36,45 @@ class TestLineageCalibration(unittest.TestCase):
         prof = lc.compute_four_channel_vector("ModelA", attempts, self.holdout_sample, tokenizer_family="GLM")
         self.assertEqual(prof["model_name"], "ModelA")
         self.assertEqual(prof["structural"]["tokenizer_family"], "GLM")
-        self.assertEqual(prof["cognitive"]["semantic_acc"], 5/6)
-        self.assertEqual(prof["cognitive"]["c2_root_retention"], 1.0)
-        self.assertEqual(prof["calibration"]["false_falsification_standard"], 0.5)
-        self.assertAlmostEqual(prof["surface"]["renderer_stability"], 2/3)
+        self.assertEqual(prof["cognitive"]["semantic_acc"][:2], (5, 6))
+        self.assertEqual(prof["cognitive"]["c2_root_retention"][:2], (2, 2))
+        self.assertEqual(prof["calibration"]["false_falsification_standard"][:2], (1, 2))
+        self.assertEqual(prof["surface"]["renderer_stability"][:2], (2, 3))
 
     def test_compute_pairwise_distances(self):
         prof_a = {
             "decisions": {"p1": "ACTIVE", "p2": "ACTIVE", "p3": "UNKNOWN"},
-            "surface": {"contract_mask": [1, 1, 1], "flip_mask": [0, 0, 0]},
+            "contracts": {"p1": 1, "p2": 1, "p3": 1},
+            "flip_masks": {("w01", "c01"): 0},
         }
         prof_b = {
             "decisions": {"p1": "ACTIVE", "p2": "UNKNOWN", "p3": "UNKNOWN"},
-            "surface": {"contract_mask": [1, 0, 1], "flip_mask": [0, 1, 0]},
+            "contracts": {"p1": 1, "p2": 0, "p3": 1},
+            "flip_masks": {("w01", "c01"): 1},
         }
         dists = lc.compute_pairwise_distances(prof_a, prof_b, self.holdout_sample)
         self.assertEqual(dists["n_shared"], 3)
-        self.assertAlmostEqual(dists["D_total"], 1/3)
-        self.assertAlmostEqual(dists["D_contract"], 1/3)
-        self.assertAlmostEqual(dists["D_render"], 1/3)
+        self.assertEqual(dists["D_total"][:2], (1, 3))
+        self.assertEqual(dists["D_contract"][:2], (1, 3))
+        self.assertEqual(dists["D_render"][:2], (1, 1))
 
     def test_evaluate_loro_clustering(self):
         profiles = {
-            "M1_rel": {"decisions": {"p1": "ACTIVE", "p2": "ACTIVE"}, "surface": {"contract_mask": [1, 1], "flip_mask": [0, 0]}},
-            "M2_rel": {"decisions": {"p1": "ACTIVE", "p2": "ACTIVE"}, "surface": {"contract_mask": [1, 1], "flip_mask": [0, 0]}},
-            "M_ctrl": {"decisions": {"p1": "UNKNOWN", "p2": "UNKNOWN"}, "surface": {"contract_mask": [0, 0], "flip_mask": [1, 1]}},
+            "M1_rel": {
+                "decisions": {"p1": "ACTIVE", "p2": "ACTIVE"},
+                "contracts": {"p1": 1, "p2": 1},
+                "flip_masks": {("w01", "c01"): 0},
+            },
+            "M2_rel": {
+                "decisions": {"p1": "ACTIVE", "p2": "ACTIVE"},
+                "contracts": {"p1": 1, "p2": 1},
+                "flip_masks": {("w01", "c01"): 0},
+            },
+            "M_ctrl": {
+                "decisions": {"p1": "UNKNOWN", "p2": "UNKNOWN"},
+                "contracts": {"p1": 0, "p2": 0},
+                "flip_masks": {("w01", "c01"): 1},
+            },
         }
         known_fams = {"FamilyA": ["M1_rel", "M2_rel"]}
         res = lc.evaluate_loro_clustering(profiles, known_fams, self.holdout_sample)
