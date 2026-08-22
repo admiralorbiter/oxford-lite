@@ -43,5 +43,35 @@ class TestNormativePressure(unittest.TestCase):
         p4 = np.parse_normative_response(resp4)
         self.assertEqual(p4["morphology_state"], "JUDGMENT_ONLY_SHIFT")
 
+    def test_authority_deference_profile(self):
+        # High follow, low asym
+        res1 = np.compute_authority_deference_profile(1.0, 1.0)
+        self.assertEqual(res1["Follow_Authority"], 1.0)
+        self.assertEqual(res1["Asymmetry_Authority"], 0.0)
+
+        # High asym
+        res2 = np.compute_authority_deference_profile(1.0, 0.0)
+        self.assertEqual(res2["Follow_Authority"], 0.5)
+        self.assertEqual(res2["Asymmetry_Authority"], 1.0)
+
+    def test_cell_selection_utility(self):
+        # Discriminative and stable cell
+        u1 = np.compute_cell_selection_utility(
+            "cell_01",
+            {"M1": "RESISTANCE", "M2": "COMPARTMENTALIZED_COMPLIANCE"},
+            ("RESISTANCE", "RESISTANCE"),
+            ["RESISTANCE", "RESISTANCE", "RESISTANCE"],
+        )
+        self.assertEqual(u1, 1.0)
+
+        # Non-discriminative cell (all agree)
+        u2 = np.compute_cell_selection_utility(
+            "cell_02",
+            {"M1": "RESISTANCE", "M2": "RESISTANCE"},
+            ("RESISTANCE", "RESISTANCE"),
+            ["RESISTANCE", "RESISTANCE"],
+        )
+        self.assertEqual(u2, 0.0)
+
 if __name__ == "__main__":
     unittest.main()
