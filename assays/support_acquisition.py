@@ -491,3 +491,107 @@ def trajectory_stability(vec1: list[str], vec2: list[str]) -> float:
     matches = sum(1 for a, b in zip(vec1, vec2) if a == b)
     return matches / len(vec1)
 
+
+def extract_model_codeword(run_dir: Any, holdout_data: list[dict[str, Any]]) -> dict[str, Any]:
+    """Extract cell-level 144-element decision codeword and 72-element renderer flip mask."""
+    from pathlib import Path
+    r_dir = Path(run_dir)
+    attempts_file = r_dir / "raw" / "attempts.jsonl"
+    attempts = []
+    if attempts_file.exists():
+        import json
+        with open(attempts_file, "r", encoding="utf-8") as f:
+            for line in f:
+                if line.strip():
+                    attempts.append(json.loads(line))
+    attempt_map = {a["probe_id"]: a for a in attempts if a.get("ok")}
+
+    synth_codeword = []
+    nat_codeword = []
+    flip_mask = []
+    acq_cells = []
+    c4_cells = []
+    strict_matches = 0
+    total_cells = 0
+
+    for item in holdout_data:
+        w_id = item["world"]["world_id"]
+        for t_s, t_n, exp in zip(item["synthetic_trajectory"], item["naturalistic_trajectory"], item["ground_truth"]):
+            cid = t_s["condition_id"]
+            p_s = f"{w_id}_SYNTHETIC_{cid}"
+            p_n = f"{w_id}_NATURALISTIC_{cid}"
+
+            att_s = attempt_map.get(p_s)
+            att_n = attempt_map.get(p_n)
+
+            msg_s = att_s.get("response_json", {}).get("choices", [{}])[0].get("message", {}) if att_s else {}
+            raw_s = (msg_s.get("content") if isinstance(msg_s, dict) else "") or ""
+            sem_s = parse_response_state(raw_s)
+            clean_s_strict = raw_s.strip().upper().rstrip(".")
+            if clean_s_strict == exp:
+                strict_matches += 1
+
+            msg_n = att_n.get("response_json", {}).get("choices", [{}])[0].get("message", {}) if att_n else {}
+            raw_n = (msg_n.get("content") if isinstance(msg_n, dict) else "") or ""
+            sem_n = parse_response_state(raw_n)
+            clean_n_strict = raw_n.strip().upper().rstrip(".")
+            if clean_n_strict == exp:
+                strict_matches += 1
+
+            total_cells += 2
+            synth_codeword.append(sem_s)
+            nat_codeword.append(sem_n)
+            is_flip = (sem_s != sem_n)
+            flip_mask.append(1 if is_flip else 0)
+
+            if cid in ("c02_retract_primary_root", "c03_retract_independent_root", "c05_retract_echo_only", "c06_rescue_primary_root"):
+                acq_cells.extend([sem_s, sem_n])
+            elif cid == "c04_complete_root_cut":
+                c4_cells.extend([sem_s, sem_n])
+
+    full_codeword = synth_codeword + nat_codeword
+    return {
+        "full_codeword": full_codeword,
+        "synth_codeword": synth_codeword,
+        "nat_codeword": nat_codeword,
+        "flip_mask": flip_mask,
+        "acq_cells": acq_cells,
+        "c4_cells": c4_cells,
+        "strict_acc": strict_matches / total_cells if total_cells else 0.0,
+    }
+
+
+def compute_lineage_distance_vector(codeword_target: dict[str, Any], codeword_candidate: dict[str, Any]) -> dict[str, float]:
+    """Compute 5-component fine-grained lineage distance vector D(Target, Candidate)."""
+    # 1. D_acq: Hamming distance on core acquisition cells (N=96)
+    acq_t = codeword_target["acq_cells"]
+    acq_c = codeword_candidate["acq_cells"]
+    d_acq = sum(1 for a, b in zip(acq_t, acq_c) if a != b) / len(acq_t) if acq_t else 0.0
+
+    # 2. D_cal: Distance on C4 complete-cut calibration distribution (N=24)
+    c4_t = codeword_target["c4_cells"]
+    c4_c = codeword_candidate["c4_cells"]
+    d_cal = sum(1 for a, b in zip(c4_t, c4_c) if a != b) / len(c4_t) if c4_t else 0.0
+
+    # 3. D_render: Hamming distance on 72-element renderer flip masks
+    flip_t = codeword_target["flip_mask"]
+    flip_c = codeword_candidate["flip_mask"]
+    d_render = sum(1 for a, b in zip(flip_t, flip_c) if a != b) / len(flip_t) if flip_t else 0.0
+
+    # 4. D_contract: Strict schema compliance discrepancy
+    d_contract = abs(codeword_target["strict_acc"] - codeword_candidate["strict_acc"])
+
+    # 5. D_total: Overall 144-decision Hamming distance
+    cw_t = codeword_target["full_codeword"]
+    cw_c = codeword_candidate["full_codeword"]
+    d_total = sum(1 for a, b in zip(cw_t, cw_c) if a != b) / len(cw_t) if cw_t else 0.0
+
+    return {
+        "D_acq": d_acq,
+        "D_cal": d_cal,
+        "D_render": d_render,
+        "D_contract": d_contract,
+        "D_total": d_total,
+    }
+
+

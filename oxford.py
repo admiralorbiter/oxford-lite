@@ -3213,6 +3213,120 @@ def command_hysteresis_assay(
     return 0
 
 
+def command_label_invariance_assay(
+    target_slug: str = "stealth/ox-alpha",
+    paid: bool = False,
+    delay: float = 0.0,
+) -> int:
+    """Execute Exploration 3C Label Invariance Control to test if F_false is semantic vs lexical."""
+    from assays import support_acquisition as sa
+
+    load_dotenv(ROOT / ".env")
+    api_key = os.getenv("OPENROUTER_API_KEY", "").strip()
+    if not api_key:
+        print("Missing OPENROUTER_API_KEY. Add key to .env.", file=sys.stderr)
+        return 2
+
+    if paid and target_slug.endswith(":free"):
+        target_slug = target_slug[:-5]
+
+    h_path = HOLDOUT_ACQUISITION_FILE
+    if not h_path.exists():
+        print(f"Acquisition holdout file not found: {h_path}.", file=sys.stderr)
+        return 2
+
+    holdouts = json.loads(h_path.read_text(encoding="utf-8"))
+    run_id = make_run_id("label_invariance")
+    run_dir = ensure_run_dir(run_id)
+    attempts_file = run_dir / "raw" / "attempts.jsonl"
+
+    target_id = target_slug.replace("/", "-").replace(":", "-")
+    target_info = {
+        "id": target_id,
+        "slug": target_slug,
+        "label": target_slug.split("/")[-1],
+        "role": "target",
+    }
+
+    print("OXFORD Exploration 3C: Label Invariance & Lexical Attraction Control")
+    print(f"Target: {target_slug}")
+    print(f"Testing 3 alternative response ontologies under Complete Root Cut (C04)")
+    print(f"Run folder: {run_dir}\n")
+
+    session = requests.Session()
+    ordinal = 1
+
+    ontologies = {
+        "standard": {
+            "prompt_suffix": "Respond with exactly one word: ACTIVE, UNKNOWN, or RETRACTED.",
+            "mapping": {"ACTIVE": "SUPPORTED", "UNKNOWN": "UNSUPPORTED", "RETRACTED": "DISPROVEN"},
+        },
+        "descriptive": {
+            "prompt_suffix": "Respond with exactly one word: SUPPORTED, UNSUPPORTED, or DISPROVEN.",
+            "mapping": {"SUPPORTED": "SUPPORTED", "UNSUPPORTED": "UNSUPPORTED", "DISPROVEN": "DISPROVEN"},
+        },
+        "arbitrary_codebook": {
+            "prompt_suffix": "Evaluation codebook:\n- STATE_A: Claim is supported by surviving valid evidence.\n- STATE_B: Claim is unsupported but not disproven.\n- STATE_C: Claim is disproven.\nRespond with exactly one token: STATE_A, STATE_B, or STATE_C.",
+            "mapping": {"STATE_A": "SUPPORTED", "STATE_B": "UNSUPPORTED", "STATE_C": "DISPROVEN"},
+        },
+    }
+
+    results = {k: {"SUPPORTED": 0, "UNSUPPORTED": 0, "DISPROVEN": 0, "FORMAT_FAILURE": 0} for k in ontologies}
+
+    for w_idx, item in enumerate(holdouts, start=1):
+        world_data = item["world"]
+        synth_c04 = next(t for t in item["synthetic_trajectory"] if t["condition_id"] == "c04_complete_root_cut")
+        base_prompt = synth_c04["prompt_text"].rsplit("Respond with", 1)[0].strip()
+
+        print(f"=== World [{w_idx}/{len(holdouts)}]: {world_data['world_id']} ===")
+        for ont_name, ont_spec in ontologies.items():
+            full_prompt = f"{base_prompt}\n\n{ont_spec['prompt_suffix']}"
+            probe_dict = {
+                "id": f"{world_data['world_id']}_{ont_name}_c04",
+                "label": f"{world_data['world_id']} {ont_name} C04",
+                "text": full_prompt,
+            }
+            print(f"  [{ont_name:18s}] ... ", end="", flush=True)
+
+            if delay > 0 and ordinal > 1:
+                time.sleep(delay)
+
+            obs = perform_request(
+                session,
+                api_key,
+                run_id,
+                ordinal,
+                target_info,
+                probe_dict,
+                envelope_id="envelope_a_minimal",
+                max_tokens=1024,
+                max_retries=4,
+                on_attempt=lambda rec: append_jsonl(attempts_file, rec),
+            )
+            ordinal += 1
+
+            raw_resp = ""
+            if obs.response_json and isinstance(obs.response_json, dict):
+                choices = obs.response_json.get("choices", [])
+                if choices:
+                    raw_resp = choices[0].get("message", {}).get("content") or ""
+
+            first_token = raw_resp.strip().split()[0].strip("*_`#.:,\n\t ").upper() if raw_resp else ""
+            mapped_state = ont_spec["mapping"].get(first_token, "FORMAT_FAILURE")
+            results[ont_name][mapped_state] += 1
+            print(f"{mapped_state} (raw='{first_token}') · {obs.elapsed_ms:.0f} ms")
+
+    print("\n" + "=" * 68)
+    print("OXFORD EXPLORATION 3C: LABEL INVARIANCE RESULTS (COMPLETE CUT C04)")
+    print("=" * 68)
+    for ont_name, counts in results.items():
+        total_valid = counts["SUPPORTED"] + counts["UNSUPPORTED"] + counts["DISPROVEN"]
+        f_false_rate = counts["DISPROVEN"] / total_valid if total_valid else 0.0
+        print(f"Ontology: {ont_name:18s} | Unsupported (Correct)={counts['UNSUPPORTED']:02d} | Disproven (Over-collapse)={counts['DISPROVEN']:02d} | F_false = {f_false_rate*100:.1f}%")
+    print("=" * 68)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="oxford.py",
@@ -3312,6 +3426,12 @@ def build_parser() -> argparse.ArgumentParser:
     hys_assay.add_argument("--open", action="store_true", dest="open_report", help="Open report.html in browser")
     hys_assay.add_argument("--seed", type=int, default=DEFAULT_SEED, help=f"Seed for shuffle (default {DEFAULT_SEED})")
 
+    # Exploration 3C: Label Invariance
+    lbl_assay = sub.add_parser("label-invariance", help="Run Exploration 3C label invariance control on complete cut C04")
+    lbl_assay.add_argument("--target", type=str, default="stealth/ox-alpha", help="Target model slug (default stealth/ox-alpha)")
+    lbl_assay.add_argument("--paid", action="store_true", help="Use paid model route (strips :free suffix)")
+    lbl_assay.add_argument("--delay", type=float, default=DEFAULT_DELAY, help=f"Delay between calls in seconds (default {DEFAULT_DELAY})")
+
     # Local Assay (Ollama)
     local = sub.add_parser("local", help="Run local assays against Ollama")
     local.add_argument("--open", action="store_true", dest="open_report", help="Open report.html in browser")
@@ -3381,6 +3501,12 @@ def main() -> int:
         return command_hysteresis_assay(
             args.open_report,
             args.seed,
+            args.target,
+            getattr(args, "paid", False),
+            getattr(args, "delay", 0.0),
+        )
+    if args.command == "label-invariance":
+        return command_label_invariance_assay(
             args.target,
             getattr(args, "paid", False),
             getattr(args, "delay", 0.0),
