@@ -3379,8 +3379,8 @@ def command_lineage_calibrate(open_report: bool = False) -> int:
         sur = prof["surface"]
         print(f"\nModel: {run_label}")
         print(f"  Structural:  Tokenizer={prof['structural']['tokenizer_family']}")
-        print(f"  Cognitive:   Semantic Acc={cog['semantic_acc'][2]*100:5.1f}% ({cog['semantic_acc'][0]:03d}/{cog['semantic_acc'][1]:03d}) | C2 Retain={cog['c2_root_retention'][2]*100:5.1f}% ({cog['c2_root_retention'][0]:02d}/{cog['c2_root_retention'][1]:02d}) | F-={cog['false_retraction'][2]*100:4.1f}% ({cog['false_retraction'][0]:02d}/{cog['false_retraction'][1]:02d}) | F+={cog['false_survival'][2]*100:4.1f}% ({cog['false_survival'][0]:02d}/{cog['false_survival'][1]:02d})")
-        print(f"  Calibration: F_false (Standard)={cal['false_falsification_standard'][2]*100:5.1f}% ({cal['false_falsification_standard'][0]:02d}/{cal['false_falsification_standard'][1]:02d})")
+        print(f"  Cognitive:   Semantic Acc={cog['semantic_acc'][2]*100:5.1f}% ({cog['semantic_acc'][0]:03d}/{cog['semantic_acc'][1]:03d}) | C2 Retain={cog['c2_root_retention'][2]*100:5.1f}% ({cog['c2_root_retention'][0]:02d}/{cog['c2_root_retention'][1]:02d}) | F_abandon-={cog['F_abandon_minus'][2]*100:4.1f}% ({cog['F_abandon_minus'][0]:02d}/{cog['F_abandon_minus'][1]:02d}) [A->U={cog['F_A_to_U'][0]}, A->R={cog['F_A_to_R'][0]}] | F+={cog['F_plus_survival'][2]*100:4.1f}% ({cog['F_plus_survival'][0]:02d}/{cog['F_plus_survival'][1]:02d})")
+        print(f"  Calibration: F_false (Standard)={cal['F_false_standard'][2]*100:5.1f}% ({cal['F_false_standard'][0]:02d}/{cal['F_false_standard'][1]:02d})")
         print(f"  Surface:     Strict Contract={sur['contract_adherence'][2]*100:5.1f}% ({sur['contract_adherence'][0]:03d}/{sur['contract_adherence'][1]:03d}) | Renderer Match={sur['renderer_stability'][2]*100:5.1f}% ({sur['renderer_stability'][0]:02d}/{sur['renderer_stability'][1]:02d})")
 
     # 1. Pairwise Shared Distance Matrix

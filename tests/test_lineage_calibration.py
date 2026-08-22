@@ -38,7 +38,7 @@ class TestLineageCalibration(unittest.TestCase):
         self.assertEqual(prof["structural"]["tokenizer_family"], "GLM")
         self.assertEqual(prof["cognitive"]["semantic_acc"][:2], (5, 6))
         self.assertEqual(prof["cognitive"]["c2_root_retention"][:2], (2, 2))
-        self.assertEqual(prof["calibration"]["false_falsification_standard"][:2], (1, 2))
+        self.assertEqual(prof["calibration"]["F_false_standard"][:2], (1, 2))
         self.assertEqual(prof["surface"]["renderer_stability"][:2], (2, 3))
 
     def test_compute_pairwise_distances(self):

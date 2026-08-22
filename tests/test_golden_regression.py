@@ -35,6 +35,7 @@ class TestGoldenRunRegression(unittest.TestCase):
     def test_ox_alpha_golden_metrics(self):
         cog = self.ox_prof["cognitive"]
         sur = self.ox_prof["surface"]
+        cal = self.ox_prof["calibration"]
         
         # 144 decisions evaluated
         self.assertEqual(self.ox_prof["total_evaluated"], 144)
@@ -44,14 +45,19 @@ class TestGoldenRunRegression(unittest.TestCase):
         self.assertEqual(sur["renderer_stability"][:2], (64, 72))
         # C2 Retention = 23 / 24 = 95.8%
         self.assertEqual(cog["c2_root_retention"][:2], (23, 24))
-        # False Retraction F- = 0 / 96 = 0.0%
-        self.assertEqual(cog["false_retraction"][:2], (0, 96))
+        # Broad Support Abandonment F_abandon- = 0 / 96 = 0.0%
+        self.assertEqual(cog["F_abandon_minus"][:2], (0, 96))
+        self.assertEqual(cog["F_A_to_U"][:2], (0, 96))
+        self.assertEqual(cog["F_A_to_R"][:2], (0, 96))
         # False Survival F+ = 0 / 24 = 0.0%
-        self.assertEqual(cog["false_survival"][:2], (0, 24))
+        self.assertEqual(cog["F_plus_survival"][:2], (0, 24))
+        # Standard False Falsification = 7 / 24 = 29.2%
+        self.assertEqual(cal["F_false_standard"][:2], (7, 24))
 
     def test_gpt_4o_mini_golden_metrics(self):
         cog = self.gpt_prof["cognitive"]
         sur = self.gpt_prof["surface"]
+        cal = self.gpt_prof["calibration"]
 
         # 127 decisions evaluated
         self.assertEqual(self.gpt_prof["total_evaluated"], 127)
@@ -61,8 +67,14 @@ class TestGoldenRunRegression(unittest.TestCase):
         self.assertEqual(sur["renderer_stability"][:2], (42, 61))
         # C2 Retention = 4 / 21 = 19.0%
         self.assertEqual(cog["c2_root_retention"][:2], (4, 21))
+        # Broad Support Abandonment F_abandon- = 22 / 84 = 26.2%
+        self.assertEqual(cog["F_abandon_minus"][:2], (22, 84))
+        self.assertEqual(cog["F_A_to_U"][:2], (12, 84))
+        self.assertEqual(cog["F_A_to_R"][:2], (10, 84))
         # False Survival F+ = 2 / 21 = 9.5%
-        self.assertEqual(cog["false_survival"][:2], (2, 21))
+        self.assertEqual(cog["F_plus_survival"][:2], (2, 21))
+        # Standard False Falsification = 3 / 21 = 14.3%
+        self.assertEqual(cal["F_false_standard"][:2], (3, 21))
 
     def test_pairwise_shared_distances(self):
         # Ox vs GPT on 127 shared cells

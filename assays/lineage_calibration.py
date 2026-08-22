@@ -137,13 +137,19 @@ def compute_four_channel_vector(
         "tokenizer_family": tokenizer_family,
     }
 
-    # 2. Cognitive Channel
+    # 2. Cognitive Channel with Complete Transition Taxonomy
+    f_a_to_u = sum(1 for pid, state in decisions.items() if state == "UNKNOWN" and any(c in pid for c in ("c02_", "c03_", "c05_", "c06_")))
+    f_a_to_r = sum(1 for pid, state in decisions.items() if state == "RETRACTED" and any(c in pid for c in ("c02_", "c03_", "c05_", "c06_")))
+    f_abandon = f_a_to_u + f_a_to_r
+    
     ch_cognitive = {
         "semantic_acc": (semantic_correct, total_evaluated, semantic_correct / total_evaluated if total_evaluated else 0.0),
         "c2_root_retention": (c2_correct, c2_total, c2_correct / c2_total if c2_total else 0.0),
         "c3_root_retention": (c3_correct, c3_total, c3_correct / c3_total if c3_total else 0.0),
-        "false_retraction": (false_retraction_count, perturbed_active_total, false_retraction_count / perturbed_active_total if perturbed_active_total else 0.0),
-        "false_survival": (c4_active, c4_total, c4_active / c4_total if c4_total else 0.0),
+        "F_A_to_U": (f_a_to_u, perturbed_active_total, f_a_to_u / perturbed_active_total if perturbed_active_total else 0.0),
+        "F_A_to_R": (f_a_to_r, perturbed_active_total, f_a_to_r / perturbed_active_total if perturbed_active_total else 0.0),
+        "F_abandon_minus": (f_abandon, perturbed_active_total, f_abandon / perturbed_active_total if perturbed_active_total else 0.0),
+        "F_plus_survival": (c4_active, c4_total, c4_active / c4_total if c4_total else 0.0),
         "ric_2": (ric_by_echo[2]["active"], ric_by_echo[2]["total"], ric_by_echo[2]["active"] / ric_by_echo[2]["total"] if ric_by_echo[2]["total"] else 0.0),
         "ric_4": (ric_by_echo[4]["active"], ric_by_echo[4]["total"], ric_by_echo[4]["active"] / ric_by_echo[4]["total"] if ric_by_echo[4]["total"] else 0.0),
         "ric_8": (ric_by_echo[8]["active"], ric_by_echo[8]["total"], ric_by_echo[8]["active"] / ric_by_echo[8]["total"] if ric_by_echo[8]["total"] else 0.0),
@@ -151,7 +157,7 @@ def compute_four_channel_vector(
 
     # 3. Calibration Channel (Standard vs Decoupled Codebook)
     ch_calibration = {
-        "false_falsification_standard": (c4_retracted, c4_total, c4_retracted / c4_total if c4_total else 0.0),
+        "F_false_standard": (c4_retracted, c4_total, c4_retracted / c4_total if c4_total else 0.0),
         "unknown_calibration_standard": (c4_unknown, c4_total, c4_unknown / c4_total if c4_total else 0.0),
     }
 
