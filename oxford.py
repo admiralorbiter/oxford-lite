@@ -256,6 +256,7 @@ def build_payload(
     provider_order: list[str] | None = None,
     allow_fallbacks: bool = True,
     max_tokens: int = 8,
+    reasoning: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     env_cfg = ENVELOPES.get(envelope_id, ENVELOPES["envelope_b_standard"])
     base_payload = env_cfg["builder"](probe_text)
@@ -264,6 +265,10 @@ def build_payload(
         **base_payload,
         "max_tokens": max_tokens,
     }
+    if reasoning:
+        payload["reasoning"] = reasoning
+    elif "glm" in model_slug.lower():
+        payload["reasoning"] = {"effort": "high"}
     if provider_order or not allow_fallbacks:
         provider_cfg: dict[str, Any] = {}
         if provider_order:
@@ -419,6 +424,7 @@ def perform_request(
     allow_fallbacks: bool = True,
     paid: bool = False,
     max_tokens: int = 8,
+    reasoning: dict[str, Any] | None = None,
     on_attempt: Callable[[dict[str, Any]], None] | None = None,
 ) -> Observation:
     model_slug = model.get("slug_paid") if paid and model.get("slug_paid") else model["slug"]
@@ -429,6 +435,7 @@ def perform_request(
         provider_order=provider_order,
         allow_fallbacks=allow_fallbacks,
         max_tokens=max_tokens,
+        reasoning=reasoning,
     )
     headers = {
         "Authorization": f"Bearer {api_key}",
