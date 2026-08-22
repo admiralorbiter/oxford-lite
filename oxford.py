@@ -2807,10 +2807,409 @@ def command_boundary_assay(
     print(f"  False Survival   (F+ = P(ACTIVE | UNKNOWN exp)): {f_plus * 100:.1f}%")
     print(f"  False Retraction (F- = P(UNKNOWN | ACTIVE exp)): {f_minus * 100:.1f}%")
     print(f"  Format Failure   (Ffmt = reasoning overflow):   {f_fmt * 100:.1f}%")
+# ---------------------------------------------------------------------------
+# Exploration 3: Latent Support Acquisition & Epistemic Hysteresis Commands
+# ---------------------------------------------------------------------------
+
+HOLDOUT_ACQUISITION_FILE = WORLDS_DIR / "holdout" / "support_acquisition_holdout.json"
+DEV_ACQUISITION_FILE = WORLDS_DIR / "development" / "acquisition_candidates.json"
+
+
+def command_acquisition_synthesize(count: int = 40, top_k: int = 12, seed: int = DEFAULT_SEED) -> int:
+    """Synthesize candidate Exploration 3A acquisition worlds with dual renderers and freeze top holdouts."""
+    from assays import support_acquisition as sa
+
+    print("OXFORD Exploration 3A: Latent Support Acquisition Synthesizer")
+    print(f"Synthesizing {count} candidate acquisition worlds with dual-strata renderers...")
+
+    rng = random.Random(seed)
+    candidates = []
+    domains = sa.DOMAINS
+    echo_counts = [2, 4, 8]
+
+    # Run identifiability compiler on standard hypothesis space
+    hyps = sa.get_standard_candidate_hypotheses(["A", "B", "C", "D"])
+    id_res = sa.compute_identifiability_codewords(hyps, ["A", "B", "C", "D"])
+    print(f"Identifiability Compiler: {id_res['distinguishable_pair_count']}/{id_res['total_possible_pairs']} graph hypothesis pairs behaviorally distinguishable.")
+
+    for i in range(count):
+        w_id = f"w_acq_{i:03d}"
+        dom = domains[i % len(domains)]
+        echo = echo_counts[i % len(echo_counts)]
+        world = sa.synthesize_acquisition_world(
+            world_id=w_id,
+            domain=dom,
+            echo_count=echo,
+            seed=rng.randint(1, 1000000),
+        )
+        traj_synth = [asdict(t) for t in sa.compile_acquisition_trajectory(world, stratum="SYNTHETIC")]
+        traj_nat = [asdict(t) for t in sa.compile_acquisition_trajectory(world, stratum="NATURALISTIC")]
+
+        candidates.append({
+            "world": asdict(world),
+            "synthetic_trajectory": traj_synth,
+            "naturalistic_trajectory": traj_nat,
+            "ground_truth": [t["expected_state"] for t in traj_synth],
+        })
+
+    dev_dir = WORLDS_DIR / "development"
+    holdout_dir = WORLDS_DIR / "holdout"
+    dev_dir.mkdir(parents=True, exist_ok=True)
+    holdout_dir.mkdir(parents=True, exist_ok=True)
+
+    write_json(DEV_ACQUISITION_FILE, candidates)
+
+    holdout_corpus = candidates[:top_k]
+    write_json(HOLDOUT_ACQUISITION_FILE, holdout_corpus)
+
+    holdout_hash = sha256_text(canonical_json(holdout_corpus))
+    print(f"\nSuccessfully froze {len(holdout_corpus)} acquisition holdout worlds to {HOLDOUT_ACQUISITION_FILE}")
+    print(f"Exploration Firewall: STATUS=HOLDOUT, SHA-256={holdout_hash}")
+    return 0
+
+
+def command_acquisition_assay(
+    open_report: bool,
+    seed: int,
+    holdout_file: str | None = None,
+    target_slug: str = "stealth/ox-alpha",
+    paid: bool = False,
+    delay: float = 0.0,
+    resume_ref: str | None = None,
+) -> int:
+    """Execute Exploration 3A Latent Support Acquisition Assay against target."""
+    from assays import support_acquisition as sa
+    from assays import support_boundary as sb
+
+    load_dotenv(ROOT / ".env")
+    api_key = os.getenv("OPENROUTER_API_KEY", "").strip()
+    if not api_key:
+        print("Missing OPENROUTER_API_KEY. Add key to .env.", file=sys.stderr)
+        return 2
+
+    if paid and target_slug.endswith(":free"):
+        target_slug = target_slug[:-5]
+
+    h_path = Path(holdout_file) if holdout_file else HOLDOUT_ACQUISITION_FILE
+    if not h_path.exists():
+        print(f"Acquisition holdout file not found: {h_path}. Running synthesize first...", file=sys.stderr)
+        command_acquisition_synthesize(seed=seed)
+
+    holdouts = json.loads(h_path.read_text(encoding="utf-8"))
+    holdout_hash = sha256_text(canonical_json(holdouts))
+
+    cached_attempts: dict[str, dict[str, Any]] = {}
+    if resume_ref:
+        target_dir = find_run_folder(resume_ref)
+        if not target_dir:
+            print(f"Cannot find run folder for resume reference: {resume_ref}", file=sys.stderr)
+            return 2
+        run_dir = target_dir
+        run_id = target_dir.name
+        attempts_file = run_dir / "raw" / "attempts.jsonl"
+        if attempts_file.exists():
+            for rec in load_jsonl(attempts_file):
+                if rec.get("ok") and rec.get("probe_id") and rec.get("response_json"):
+                    cached_attempts[rec["probe_id"]] = rec
+        print(f"Resuming run {run_id}: found {len(cached_attempts)} cached successful probes.")
+    else:
+        run_id = make_run_id("acquisition")
+        run_dir = ensure_run_dir(run_id)
+        attempts_file = run_dir / "raw" / "attempts.jsonl"
+
+    target_id = target_slug.replace("/", "-").replace(":", "-")
+    target_info = {
+        "id": target_id,
+        "slug": target_slug,
+        "label": target_slug.split("/")[-1],
+        "role": "target",
+    }
+
+    print("OXFORD Exploration 3A: Latent Support Acquisition Assay")
+    print(f"Target: {target_slug}")
+    print(f"Loaded {len(holdouts)} frozen acquisition holdouts (SHA-256={holdout_hash[:16]}...)")
+    print(f"Run folder: {run_dir}\n")
+
+    session = requests.Session()
+    observations: list[dict[str, Any]] = []
+
+    world_results = []
+    all_observed = []
+    all_expected = []
+    renderer_stabilities = []
+    ric_by_echo = {2: [], 4: [], 8: []}
+    ordinal = 1
+
+    for w_idx, item in enumerate(holdouts, start=1):
+        world_data = item["world"]
+        synth_items = [sa.AcquisitionIntervention(**t) for t in item["synthetic_trajectory"]]
+        nat_items = [sa.AcquisitionIntervention(**t) for t in item["naturalistic_trajectory"]]
+        gt_vector = item["ground_truth"]
+
+        print(f"=== World [{w_idx}/{len(holdouts)}]: {world_data['world_id']} ({world_data['domain']}, e={world_data['echo_count']}) ===")
+
+        def execute_stratum(items: list[sa.AcquisitionIntervention], stratum_label: str) -> list[str]:
+            nonlocal ordinal
+            print(f"  [{stratum_label}]")
+            obs_vec = []
+            for t_idx, interv in enumerate(items, start=1):
+                probe_dict = {
+                    "id": f"{world_data['world_id']}_{interv.stratum}_{interv.condition_id}",
+                    "label": f"{world_data['world_id']} {interv.stratum} {interv.label}",
+                    "text": interv.prompt_text,
+                }
+                print(f"    [{t_idx:02d}/{len(items):02d}] {interv.label} ... ", end="", flush=True)
+
+                cached = cached_attempts.get(probe_dict["id"])
+                if cached:
+                    raw_resp = ""
+                    if isinstance(cached.get("response_json"), dict):
+                        choices = cached["response_json"].get("choices", [])
+                        if choices:
+                            raw_resp = choices[0].get("message", {}).get("content") or ""
+                    state = sa.parse_response_state(raw_resp)
+                    obs_vec.append(state)
+                    is_match = state == interv.expected_state
+                    mark = "ok" if is_match else f"DIFF (got {state}, expected {interv.expected_state})"
+                    print(f"[cached {mark}] · {cached.get('elapsed_ms', 0):.0f} ms")
+                    continue
+
+                if delay > 0 and ordinal > 1:
+                    time.sleep(delay)
+
+                obs = perform_request(
+                    session,
+                    api_key,
+                    run_id,
+                    ordinal,
+                    target_info,
+                    probe_dict,
+                    envelope_id="envelope_a_minimal",
+                    max_tokens=1024,
+                    max_retries=4,
+                    on_attempt=lambda rec: append_jsonl(attempts_file, rec),
+                )
+                ordinal += 1
+                observations.append(asdict(obs))
+
+                raw_resp = ""
+                if obs.response_json and isinstance(obs.response_json, dict):
+                    choices = obs.response_json.get("choices", [])
+                    if choices:
+                        raw_resp = choices[0].get("message", {}).get("content") or ""
+
+                state = sa.parse_response_state(raw_resp)
+                obs_vec.append(state)
+                is_match = state == interv.expected_state
+                mark = "ok" if is_match else f"DIFF (got {state}, expected {interv.expected_state})"
+                print(f"{mark} · {obs.elapsed_ms:.0f} ms")
+
+            return obs_vec
+
+        obs_synth = execute_stratum(synth_items, "Synthetic-Neutral Strata")
+        obs_nat = execute_stratum(nat_items, "Naturalistic Strata")
+
+        all_observed.extend(obs_synth)
+        all_expected.extend(gt_vector)
+        all_observed.extend(obs_nat)
+        all_expected.extend(gt_vector)
+
+        acc_synth = sa.trajectory_accuracy(obs_synth, gt_vector)
+        acc_nat = sa.trajectory_accuracy(obs_nat, gt_vector)
+        rend_stab = sa.trajectory_stability(obs_synth, obs_nat)
+        renderer_stabilities.append(rend_stab)
+
+        # Record Redundancy Inflation (C04: Root A & D cut -> active rate under e echoes)
+        echo_k = world_data["echo_count"]
+        if echo_k in ric_by_echo:
+            # Check C04 state (index 3)
+            c04_synth_active = 1.0 if len(obs_synth) > 3 and obs_synth[3] == "ACTIVE" else 0.0
+            c04_nat_active = 1.0 if len(obs_nat) > 3 and obs_nat[3] == "ACTIVE" else 0.0
+            ric_by_echo[echo_k].extend([c04_synth_active, c04_nat_active])
+
+        print(f"  --> World {world_data['world_id']} Result: Synth Acc={acc_synth*100:.0f}%, Nat Acc={acc_nat*100:.0f}%, Renderer Stab={rend_stab*100:.0f}%\n")
+        world_results.append({
+            "world_id": world_data["world_id"],
+            "domain": world_data["domain"],
+            "echo_count": world_data["echo_count"],
+            "synthetic_accuracy": acc_synth,
+            "naturalistic_accuracy": acc_nat,
+            "renderer_stability": rend_stab,
+            "synthetic_observed": obs_synth,
+            "naturalistic_observed": obs_nat,
+            "ground_truth": gt_vector,
+        })
+
+    total_acc = sa.trajectory_accuracy(all_observed, all_expected)
+    mean_stab = statistics.fmean(renderer_stabilities) if renderer_stabilities else 1.0
+
+    # Error Polarity Decomposition
+    unknown_expected_pairs = [(obs, exp) for obs, exp in zip(all_observed, all_expected) if exp == "UNKNOWN"]
+    active_expected_pairs = [(obs, exp) for obs, exp in zip(all_observed, all_expected) if exp == "ACTIVE"]
+    f_plus = sum(1 for obs, _ in unknown_expected_pairs if obs == "ACTIVE") / len(unknown_expected_pairs) if unknown_expected_pairs else 0.0
+    f_minus = sum(1 for obs, _ in active_expected_pairs if obs == "UNKNOWN") / len(active_expected_pairs) if active_expected_pairs else 0.0
+    f_fmt = sum(1 for obs in all_observed if obs == "FORMAT_FAILURE") / len(all_observed) if all_observed else 0.0
+
+    # Redundancy Inflation Curve
+    ric_curve = {
+        e: statistics.fmean(vals) if vals else 0.0
+        for e, vals in ric_by_echo.items()
+    }
+
+    manifest_data = {
+        "run_id": run_id,
+        "kind": "support_acquisition_assay_e3a",
+        "target": target_info,
+        "firewall_status": "HOLDOUT",
+        "holdout_corpus_sha256": holdout_hash,
+        "created_at_utc": utc_now(),
+        "total_trajectories": len(world_results) * 2,
+        "total_requests": len(observations),
+    }
+    write_json(run_dir / "manifest.json", manifest_data)
+    write_jsonl(run_dir / "raw" / "observations.jsonl", observations)
+
+    summary = {
+        "run_id": run_id,
+        "target": target_slug,
+        "overall_trajectory_accuracy": total_acc,
+        "renderer_strata_stability": mean_stab,
+        "redundancy_inflation_curve": ric_curve,
+        "false_survival_rate": f_plus,
+        "false_retraction_rate": f_minus,
+        "format_failure_rate": f_fmt,
+        "world_results": world_results,
+    }
+    write_json(run_dir / "summary.json", summary)
+
     print("=" * 68)
-    print(f"HTML Report: {report_path}")
-    if open_report:
-        webbrowser.open(report_path.resolve().as_uri())
+    print("OXFORD EXPLORATION 3A: SUPPORT ACQUISITION RESULTS")
+    print("=" * 68)
+    print(f"Overall Trajectory Accuracy:        {total_acc * 100:.1f}%")
+    print(f"Renderer Strata Stability:          {mean_stab * 100:.1f}% (Synthetic vs Naturalistic)")
+    print("-" * 68)
+    print("Redundancy Inflation Curve RIC(e) (False Survival under e Echoes):")
+    for e, rate in ric_curve.items():
+        print(f"  e={e} derivative echoes: {rate * 100:.1f}%")
+    print("-" * 68)
+    print("Error Polarity Decomposition:")
+    print(f"  False Survival   (F+ = P(ACTIVE | UNKNOWN exp)): {f_plus * 100:.1f}%")
+    print(f"  False Retraction (F- = P(UNKNOWN | ACTIVE exp)): {f_minus * 100:.1f}%")
+    print(f"  Format Failure   (Ffmt = reasoning overflow):   {f_fmt * 100:.1f}%")
+    print("=" * 68)
+    return 0
+
+
+def command_hysteresis_assay(
+    open_report: bool,
+    seed: int,
+    target_slug: str = "stealth/ox-alpha",
+    paid: bool = False,
+    delay: float = 0.0,
+) -> int:
+    """Execute Exploration 3B Multi-Turn Epistemic Hysteresis Assay."""
+    from assays import epistemic_hysteresis as eh
+    from assays import support_boundary as sb
+
+    load_dotenv(ROOT / ".env")
+    api_key = os.getenv("OPENROUTER_API_KEY", "").strip()
+    if not api_key:
+        print("Missing OPENROUTER_API_KEY. Add key to .env.", file=sys.stderr)
+        return 2
+
+    if paid and target_slug.endswith(":free"):
+        target_slug = target_slug[:-5]
+
+    run_id = make_run_id("hysteresis")
+    run_dir = ensure_run_dir(run_id)
+
+    target_id = target_slug.replace("/", "-").replace(":", "-")
+    target_info = {
+        "id": target_id,
+        "slug": target_slug,
+        "label": target_slug.split("/")[-1],
+        "role": "target",
+    }
+
+    print("OXFORD Exploration 3B: Epistemic Hysteresis Assay")
+    print(f"Target: {target_slug}")
+    print(f"Run folder: {run_dir}\n")
+
+    session = requests.Session()
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+        "X-Title": "OXFORD Lite Hysteresis",
+    }
+
+    domains = ["ASTROPHYSICS", "GENOMICS", "MATERIALS_SCIENCE", "NETWORK_FORENSICS"]
+    entities = ["GLIESE_887_C", "TRX4_COMPLEX", "TLG_SUPERLATTICE", "PAM_ENCLAVE"]
+    properties = ["METHANE_BIOSIGNATURE", "ALLOSTERIC_SWITCH", "ANOMALOUS_HALL", "TIMING_VULNERABILITY"]
+
+    worlds = [
+        eh.build_hysteresis_world(
+            world_id=f"w_hys_{i:02d}",
+            target_entity=entities[i % len(entities)],
+            target_property=properties[i % len(properties)],
+            domain=domains[i % len(domains)],
+        )
+        for i in range(4)
+    ]
+
+    world_metrics = []
+    ordinal = 1
+
+    for w_idx, world in enumerate(worlds, start=1):
+        print(f"=== World [{w_idx}/{len(worlds)}]: {world.world_id} ({world.domain}) ===")
+        observed_states: dict[str, str] = {}
+
+        for cond in world.conditions:
+            cond_id = cond["condition_id"]
+            cond_type = cond["condition_type"]
+            turns = cond["turns"]
+            print(f"  [{cond_type}] ... ", end="", flush=True)
+
+            if delay > 0 and ordinal > 1:
+                time.sleep(delay)
+
+            # Build messages list for chat endpoint
+            messages = [{"role": t["role"], "content": t["content"]} for t in turns]
+
+            payload = {
+                "model": target_slug,
+                "messages": messages,
+                "max_tokens": 1024,
+            }
+
+            try:
+                resp = session.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload, timeout=120)
+                body = resp.json()
+                raw_content = body.get("choices", [{}])[0].get("message", {}).get("content", "")
+                parsed_state = sb.parse_response_state(raw_content)
+                observed_states[cond_type] = parsed_state
+                print(f"{parsed_state} (raw='{raw_content.strip()}') · {resp.elapsed.total_seconds()*1000:.0f} ms")
+            except Exception as e:
+                observed_states[cond_type] = "FORMAT_FAILURE"
+                print(f"ERROR ({e})")
+            ordinal += 1
+
+        decomp = eh.compute_hysteresis_decomposition(observed_states)
+        world_metrics.append(decomp)
+        print(f"  --> World {world.world_id} Hysteresis: H_total={decomp['H_total']}, H_commit={decomp['H_commit']}, H_seq={decomp['H_sequence']}\n")
+
+    mean_h_total = statistics.fmean([m["H_total"] for m in world_metrics]) if world_metrics else 0.0
+    mean_h_commit = statistics.fmean([m["H_commit"] for m in world_metrics]) if world_metrics else 0.0
+    mean_h_seq = statistics.fmean([m["H_sequence"] for m in world_metrics]) if world_metrics else 0.0
+    mean_h_order = statistics.fmean([m["H_order"] for m in world_metrics]) if world_metrics else 0.0
+
+    print("=" * 68)
+    print("OXFORD EXPLORATION 3B: EPISTEMIC HYSTERESIS RESULTS")
+    print("=" * 68)
+    print(f"Total Hysteresis (H_total = D(history+commit, static)):     {mean_h_total:.3f}")
+    print(f"Commitment Inertia (H_commit = D(commit, no_commit)):        {mean_h_commit:.3f}")
+    print(f"Sequence Drift (H_sequence = D(no_commit, static)):          {mean_h_seq:.3f}")
+    print(f"Path Dependence (H_order = D(pathA, pathB)):                {mean_h_order:.3f}")
+    print("=" * 68)
     return 0
 
 
@@ -2890,6 +3289,29 @@ def build_parser() -> argparse.ArgumentParser:
     bnd_assay.add_argument("--open", action="store_true", dest="open_report", help="Open report.html in browser")
     bnd_assay.add_argument("--seed", type=int, default=DEFAULT_SEED, help=f"Seed for shuffle (default {DEFAULT_SEED})")
 
+    # Exploration 3A: Latent Support Acquisition
+    acq_synth = sub.add_parser("acquisition-synthesize", help="Synthesize Exploration 3A acquisition candidate worlds and freeze holdouts")
+    acq_synth.add_argument("--count", type=int, default=40, help="Number of candidate worlds to synthesize (default 40)")
+    acq_synth.add_argument("--top-k", type=int, default=12, help="Top K holdout trajectories to freeze (default 12)")
+    acq_synth.add_argument("--seed", type=int, default=DEFAULT_SEED, help=f"Simulation seed (default {DEFAULT_SEED})")
+
+    acq_assay = sub.add_parser("acquisition-assay", help="Run Exploration 3A latent support acquisition assay against target")
+    acq_assay.add_argument("--holdout", type=str, dest="holdout_file", help="Path to frozen acquisition holdout JSON file")
+    acq_assay.add_argument("--target", type=str, default="stealth/ox-alpha", help="Target model slug (default stealth/ox-alpha)")
+    acq_assay.add_argument("--paid", action="store_true", help="Use paid model route (strips :free suffix)")
+    acq_assay.add_argument("--delay", type=float, default=DEFAULT_DELAY, help=f"Delay between calls in seconds (default {DEFAULT_DELAY})")
+    acq_assay.add_argument("--resume", type=str, dest="resume_ref", help="Resume prior run folder (e.g. --resume latest)")
+    acq_assay.add_argument("--open", action="store_true", dest="open_report", help="Open report.html in browser")
+    acq_assay.add_argument("--seed", type=int, default=DEFAULT_SEED, help=f"Seed for shuffle (default {DEFAULT_SEED})")
+
+    # Exploration 3B: Epistemic Hysteresis
+    hys_assay = sub.add_parser("hysteresis-assay", help="Run Exploration 3B multi-turn epistemic hysteresis assay against target")
+    hys_assay.add_argument("--target", type=str, default="stealth/ox-alpha", help="Target model slug (default stealth/ox-alpha)")
+    hys_assay.add_argument("--paid", action="store_true", help="Use paid model route (strips :free suffix)")
+    hys_assay.add_argument("--delay", type=float, default=DEFAULT_DELAY, help=f"Delay between calls in seconds (default {DEFAULT_DELAY})")
+    hys_assay.add_argument("--open", action="store_true", dest="open_report", help="Open report.html in browser")
+    hys_assay.add_argument("--seed", type=int, default=DEFAULT_SEED, help=f"Seed for shuffle (default {DEFAULT_SEED})")
+
     # Local Assay (Ollama)
     local = sub.add_parser("local", help="Run local assays against Ollama")
     local.add_argument("--open", action="store_true", dest="open_report", help="Open report.html in browser")
@@ -2942,6 +3364,26 @@ def main() -> int:
             getattr(args, "paid", False),
             getattr(args, "delay", 0.0),
             getattr(args, "resume_ref", None),
+        )
+    if args.command == "acquisition-synthesize":
+        return command_acquisition_synthesize(args.count, args.top_k, args.seed)
+    if args.command == "acquisition-assay":
+        return command_acquisition_assay(
+            args.open_report,
+            args.seed,
+            getattr(args, "holdout_file", None),
+            args.target,
+            getattr(args, "paid", False),
+            getattr(args, "delay", 0.0),
+            getattr(args, "resume_ref", None),
+        )
+    if args.command == "hysteresis-assay":
+        return command_hysteresis_assay(
+            args.open_report,
+            args.seed,
+            args.target,
+            getattr(args, "paid", False),
+            getattr(args, "delay", 0.0),
         )
     if args.command in ("remote", "pilot"):
         return command_remote(

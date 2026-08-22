@@ -116,11 +116,21 @@ def build_boundary_prompt(
 
 
 def parse_response_state(response_text: str | None) -> str:
-    """Strictly parse single categorical response token."""
+    """Strictly parse categorical response token, normalizing markdown delimiters."""
     if not response_text:
         return "FORMAT_FAILURE"
-    clean = response_text.strip().upper().rstrip(".").strip()
-    return clean if clean in VALID_OUTPUTS else "FORMAT_FAILURE"
+    # Clean whole string first
+    clean_all = response_text.strip().strip("*_`#.:,\n\t ").upper()
+    if clean_all in VALID_OUTPUTS:
+        return clean_all
+    # Check first line or first word (e.g. **ACTIVE**\n\nReasoning...)
+    first_line = response_text.strip().split("\n")[0].strip("*_`#.:,\n\t ").upper()
+    if first_line in VALID_OUTPUTS:
+        return first_line
+    first_word = response_text.strip().split()[0].strip("*_`#.:,\n\t ").upper()
+    if first_word in VALID_OUTPUTS:
+        return first_word
+    return "FORMAT_FAILURE"
 
 
 def trajectory_distance(vec_a: list[str], vec_b: list[str]) -> float:
