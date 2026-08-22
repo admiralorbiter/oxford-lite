@@ -6,12 +6,12 @@
 
 Through a multi-channel developmental and normative forensic battery, the structural and behavioral lineage of target model **`stealth/ox-alpha`** has been resolved:
 
-> **Definitive Assessment**:
+> **Frozen Assessment**:
 > **`stealth/ox-alpha` is strongly supported as a distinct GLM-lineage multimodal derivative whose cognitive and normative developmental state is substantially more consistent with `GLM-5.2` than with the tested public `GLM-5.3`, `GLM-5-Turbo`, or `GLM-5V-Turbo` branches.**
 >
-> Its multimodal preprocessing additionally exhibits **`GLM-V`-like continuous grid geometry**. The available black-box evidence demonstrates that Ox Alpha is **not behaviorally identical to any tested public reference checkpoint**, but rather represents an independent downstream child rooted near the `GLM-5.2` developmental baseline.
+> Its multimodal preprocessing additionally exhibits **`GLM-V`-like continuous grid geometry**. The empirical evidence demonstrates that Ox Alpha is **not behaviorally identical to any tested public reference checkpoint**, but rather represents an independent downstream child rooted near the `GLM-5.2` developmental baseline.
 >
-> *Provenance Boundary*: The available black-box evidence does not determine whether this derivative was trained internally by Z.ai, by an enterprise partner/licensee, or by an independent third party utilizing GLM-family open weights.
+> *Provenance Boundary*: The available black-box evidence does not determine whether this derivative was trained internally by Z.ai, by an enterprise partner/licensee, or by an independent third party utilizing open GLM-family weights.
 
 ---
 
@@ -19,7 +19,7 @@ Through a multi-channel developmental and normative forensic battery, the struct
 
 | Subsystem Channel | Empirical Forensic Finding | Lineage Attribution |
 | :--- | :--- | :--- |
-| **Pretraining & Tokenizer** | $100\%$ exact token delta match ($6/6$, $0$ residual across frozen E1 boundary probes). Gemini, Gemma, Qwen excluded ($0/6$). | **GLM Family Trunk** |
+| **Pretraining & Tokenizer** | $100\%$ exact token delta match ($6/6$, $0$ residual across frozen E1 boundary probes). Directly tested exclusions: **Gemini 2.5 Flash**, **Qwen-2.5**, **Gemma-2** ($0/6$). Gemma-3 tokenizer lineage is inconsistent via Google's documented tokenizer relationship to Gemini. | **GLM Family Trunk** |
 | **Developmental Cognition** | $D_{\text{acq}} = 4.2\% - 5.2\%$ against 5.2/Turbo basin; $14/17$ match on 5.2 baseline against 5.2$\to$5.3 transition. | **GLM-5.2-like Cognitive Basin** |
 | **Normative Baseline** | $A \to A$ on Metric $C_2$ ($100\%$ stable across 6 draws); $R \to R$ on Authority $C_1$ ($100\%$ stable across 6 draws). | **GLM-5.2-like Normative Trunk** |
 | **Downstream Morphology** | $A \to A$ on Evidence $C_5$ (matching Turbo/5V, diverging from 5.2/5.3); $C \to A$ on Social $C_4$ (hybrid transition). | **Distinct Downstream Training** |
@@ -53,7 +53,8 @@ Clean Discriminator Coordinate    Ox Alpha (6 Draws)   GLM-5.2   GLM-5.3   GLM-5
 1. **Tier 1: Settled Forensic Ground Truth (Pretraining / Tokenizer Trunk)**
    - Ox Alpha is built upon the GLM pretraining trunk.
    - Exact token delta matching against GLM-5.2 ($6/6$, $100\%$).
-   - Formally excluded: Qwen-2.5, Gemma-2, Gemma-3, and Gemini 2.5 Flash ($0/6$, $100\%$ divergence).
+   - Directly tested structural exclusions: Gemini 2.5 Flash, Qwen-2.5, Gemma-2 ($0/6$).
+   - Gemma-3 tokenizer lineage is inconsistent via Google's documented tokenizer relationship to Gemini.
 
 2. **Tier 2: High Confidence Ground Truth (Developmental Basin & Checkpoint Non-Identity)**
    - Ox Alpha sits inside the GLM-5.2 / GLM-5-Turbo cognitive basin ($D_{\text{acq}} = 4.2\% - 5.2\%$).
@@ -73,4 +74,4 @@ Clean Discriminator Coordinate    Ox Alpha (6 Draws)   GLM-5.2   GLM-5.3   GLM-5
 
 Before any public announcement or disclosure, the OXFORD project freezes this falsifiable prediction:
 
-$$\text{Ox Alpha} = \text{GLM-family trunk} \;\times\; \text{GLM-5.2-like developmental state} \;\times\; \text{Separate downstream multimodal child (non-public checkpoint)}$$
+$$\mathbf{\text{Prediction: }} \text{Ox Alpha} = \text{GLM-family trunk} \;\times\; \text{GLM-5.2-like developmental baseline} \;\times\; \text{Separate downstream multimodal child (non-public checkpoint)}$$
