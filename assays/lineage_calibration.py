@@ -357,29 +357,67 @@ def compute_informative_channel_vector(
     d_target_base = compute_pairwise_distances(profile_target, profile_base, holdout_data)
     d_target_desc = compute_pairwise_distances(profile_target, profile_descendant, holdout_data)
 
-    # Informative channel delta: delta_k = D_k(base, descendant)
+    dec_b = profile_base["decisions"]
+    dec_d = profile_descendant["decisions"]
+    dec_t = profile_target["decisions"]
+
     channels = ["D_total", "D_acq", "D_cal", "D_contract", "D_render"]
     informative_analysis = {}
 
+    # 1. Total & Channel-Specific Triad Evaluated Sets
+    all_shared = [pid for pid in dec_b if pid in dec_d and pid in dec_t]
+    
     for ch in channels:
         delta_k = d_sibling[ch][2]
         d_tb = d_target_base[ch][2]
         d_td = d_target_desc[ch][2]
-        is_informative = (delta_k > 0.0)
 
-        # Placement vote on informative channels
-        placement = "INDETERMINATE"
-        if is_informative:
-            if d_td < d_tb:
-                placement = "NEARER_DESCENDANT"
-            elif d_tb < d_td:
-                placement = "NEARER_BASE"
-            else:
-                placement = "EQUIDISTANT"
+        # Filter candidate cells for channel k
+        if ch == "D_acq":
+            ch_pids = [pid for pid in all_shared if any(c in pid for c in ("c02_", "c03_", "c05_", "c06_"))]
+        elif ch == "D_cal":
+            ch_pids = [pid for pid in all_shared if "c04_" in pid]
+        elif ch == "D_total":
+            ch_pids = list(all_shared)
+        else:
+            ch_pids = []
+
+        # Triad-evaluable sibling-discordant set: S_k* = { i in ch_pids: y_base(i) != y_desc(i) }
+        s_k_pids = [pid for pid in ch_pids if dec_b[pid] != dec_d[pid]]
+        n_s_k = len(s_k_pids)
+
+        n_match_desc = sum(1 for pid in s_k_pids if dec_t[pid] == dec_d[pid])
+        n_match_base = sum(1 for pid in s_k_pids if dec_t[pid] == dec_b[pid])
+        n_match_other = sum(1 for pid in s_k_pids if dec_t[pid] != dec_d[pid] and dec_t[pid] != dec_b[pid])
+
+        match_desc_rate = n_match_desc / n_s_k if n_s_k else 0.0
+        match_base_rate = n_match_base / n_s_k if n_s_k else 0.0
+        match_other_rate = n_match_other / n_s_k if n_s_k else 0.0
+
+        # Signed Branch Index: B_k = (N_desc - N_base) / |S_k*| in [-1.0, +1.0]
+        branch_index_b_k = (n_match_desc - n_match_base) / n_s_k if n_s_k else 0.0
+
+        # Epistemic Decision Ladder
+        if n_s_k <= 1:
+            placement = "INSUFFICIENT_RESOLUTION"
+        elif branch_index_b_k > 0:
+            placement = "FAVORS_DESCENDANT"
+        elif branch_index_b_k < 0:
+            placement = "FAVORS_BASE"
+        else:
+            placement = "NEUTRAL_OR_DIVERGENT"
 
         informative_analysis[ch] = {
             "delta_sibling": delta_k,
-            "is_informative": is_informative,
+            "n_discordant_cells": n_s_k,
+            "is_informative": (n_s_k >= 2),
+            "N_match_desc": n_match_desc,
+            "N_match_base": n_match_base,
+            "N_match_other": n_match_other,
+            "Match_desc": match_desc_rate,
+            "Match_base": match_base_rate,
+            "Match_other": match_other_rate,
+            "Branch_Index_Bk": branch_index_b_k,
             "dist_to_base": d_tb,
             "dist_to_descendant": d_td,
             "target_placement": placement,

@@ -80,28 +80,34 @@ class TestLineageCalibration(unittest.TestCase):
     def test_compute_informative_channel_vector(self):
         prof_base = {
             "model_name": "GLM-5.2",
-            "decisions": {"p1": "ACTIVE", "p2": "ACTIVE", "p3": "UNKNOWN"},
-            "contracts": {"p1": 1, "p2": 1, "p3": 1},
+            "decisions": {"p1": "ACTIVE", "p2": "ACTIVE", "p3": "UNKNOWN", "p4": "UNKNOWN"},
+            "contracts": {"p1": 1, "p2": 1, "p3": 1, "p4": 1},
             "flip_masks": {("w01", "c01"): 0},
         }
         prof_desc = {
             "model_name": "GLM-5.3",
-            "decisions": {"p1": "ACTIVE", "p2": "ACTIVE", "p3": "RETRACTED"},
-            "contracts": {"p1": 1, "p2": 1, "p3": 1},
+            "decisions": {"p1": "ACTIVE", "p2": "ACTIVE", "p3": "RETRACTED", "p4": "RETRACTED"},
+            "contracts": {"p1": 1, "p2": 1, "p3": 1, "p4": 1},
             "flip_masks": {("w01", "c01"): 0},
         }
         prof_target = {
             "model_name": "Ox Alpha",
-            "decisions": {"p1": "ACTIVE", "p2": "ACTIVE", "p3": "RETRACTED"},
-            "contracts": {"p1": 1, "p2": 1, "p3": 1},
+            "decisions": {"p1": "ACTIVE", "p2": "ACTIVE", "p3": "RETRACTED", "p4": "RETRACTED"},
+            "contracts": {"p1": 1, "p2": 1, "p3": 1, "p4": 1},
             "flip_masks": {("w01", "c01"): 0},
         }
         res = lc.compute_informative_channel_vector(prof_base, prof_desc, prof_target, self.holdout_sample)
         self.assertEqual(res["base_model"], "GLM-5.2")
         self.assertEqual(res["descendant_model"], "GLM-5.3")
         self.assertEqual(res["target_model"], "Ox Alpha")
-        self.assertTrue(res["channel_analysis"]["D_total"]["is_informative"])
-        self.assertEqual(res["channel_analysis"]["D_total"]["target_placement"], "NEARER_DESCENDANT")
+        ch_tot = res["channel_analysis"]["D_total"]
+        self.assertTrue(ch_tot["is_informative"])
+        self.assertEqual(ch_tot["n_discordant_cells"], 2)
+        self.assertEqual(ch_tot["N_match_desc"], 2)
+        self.assertEqual(ch_tot["N_match_base"], 0)
+        self.assertEqual(ch_tot["Match_desc"], 1.0)
+        self.assertEqual(ch_tot["Branch_Index_Bk"], 1.0)
+        self.assertEqual(ch_tot["target_placement"], "FAVORS_DESCENDANT")
 
 
 if __name__ == "__main__":
