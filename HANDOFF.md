@@ -89,7 +89,18 @@ python scratch/test_local_qwen.py
 
 ---
 
-## 5. Working Lineage Architecture
+## 5. Calibrated Epistemic Hierarchy & Attribution Status
+
+| Evidence Tier | Confidence | Core Empirical Finding |
+| :--- | :---: | :--- |
+| **Tier 1: Pretraining Trunk** | **Definitive** | Exact GLM tokenizer byte merges, vocabulary distribution, and special token serialization (Exploration 1). |
+| **Tier 2: Cognitive Basin** | **Strong** | Sits tightly inside the **`GLM-5.2 / GLM-5-Turbo` cognitive support basin** ($D_{\text{acq}} = 4.2\% - 5.2\%$), rejecting the public `GLM-5.3` post-training shift ($14/17 = 82.4\%$ match to 5.2 base on sibling-discordant cells, $B_{\text{acq}} = -0.65$). |
+| **Tier 3: Downstream Turbo Traits** | **Suggestive** | Slightly nearer `GLM-5-Turbo` overall ($D_{\text{acq}} = 4.2\%$ vs $5.2\%$, 1-cell delta; $B_{\text{total}} = +0.27$), shared GLM-V $28\times28$ patch grid & $112\times112$ floor, and elevated surface lexical pull ($F_{\text{false}} = 45.8\% \leftrightarrow 29.2\%$). |
+| **Tier 4: Builder / Lab Identity** | **Unresolved** | Unreleased internal Z.ai efficiency/multimodal sibling (`GLM-5V-Turbo/Flash`) vs. sophisticated third-party GLM-5.2 post-training derivative. |
+
+---
+
+## 6. Working Lineage Hypothesis Space
 
 ```
                                 [GLM Pretraining Trunk]
@@ -102,13 +113,16 @@ python scratch/test_local_qwen.py
                     ┌──────────────────────┴──────────────────────────┐
                     │                                                 │
                     ▼                                                 ▼
-          [Public GLM-5.2 Text API]              [Z.ai Multimodal / Efficiency Branch]
-          • Dacq = 5.2% to Ox                    • Integrated GLM-V 28x28 Vision Encoder
-          • Older serving stack                  • 112x112 spatial resolution floor
-                    │                            • Mandatory reasoning serving layer (400 on disable)
-                    ▼                                                 │
-          [Public GLM-5.3 Text API]                                   ▼
-          • Dacq = 16.7% to Ox                               [stealth/ox-alpha]
-          • Shifted 17 cognitive coordinates             (e.g., GLM-5V-Turbo / GLM-5V-Flash)
-          • Ox matches 5.2 on 14/17 (82.4%)
+          [Public GLM-5.2 Text API]              [Downstream Turbo / V Branches]
+          • Dacq = 5.2% to Ox                                         │
+          • Baseline serving stack               ┌────────────────────┼────────────────────┐
+                    │                            │                    │                    │
+                    ▼                            ▼                    ▼                    ▼
+          [Public GLM-5.3 Text API]        [GLM-5-Turbo]      [GLM-5V-Turbo]     [Third-Party GLM-5.2]
+          • Dacq = 16.7% to Ox             • Dacq = 4.2%      • 28x28 Vision     • Custom post-training
+          • 14/17 discordant cells         • Agent tuned      • 112x112 Floor    • Custom serving
+            favor 5.2 base                       │                    │                    │
+                                                 └──────────────┬─────┴────────────────────┘
+                                                                ▼
+                                                       [stealth/ox-alpha ?]
 ```
