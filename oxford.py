@@ -476,15 +476,15 @@ def perform_request(
             if on_attempt:
                 on_attempt(attempt_record)
 
-            if response.status_code == 429 and retries < max_retries:
+            if response.status_code in (402, 429) and retries < max_retries:
                 retries += 1
                 retry_after_str = response.headers.get("Retry-After")
                 try:
-                    retry_after = float(retry_after_str) if retry_after_str else 3.0
+                    retry_after = float(retry_after_str) if retry_after_str else 6.0
                 except ValueError:
-                    retry_after = 3.0
+                    retry_after = 6.0
                 sleep_time = (retry_after * (1.5 ** (retries - 1))) + random.uniform(0.5, 1.5)
-                print(f"[429 backoff: retry {retries}/{max_retries} in {sleep_time:.1f}s] ... ", end="", flush=True)
+                print(f"[{response.status_code} backoff: retry {retries}/{max_retries} in {sleep_time:.1f}s] ... ", end="", flush=True)
                 time.sleep(sleep_time)
                 continue
 
@@ -2494,6 +2494,9 @@ def command_boundary_assay(
     seed: int,
     holdout_file: str | None = None,
     target_slug: str = "stealth/ox-alpha",
+    paid: bool = False,
+    delay: float = 0.0,
+    resume_ref: str | None = None,
 ) -> int:
     """Execute Exploration 2B.1 formal graph lineage laundering and depth boundary assay."""
     from assays import support_boundary as sb
@@ -2504,6 +2507,9 @@ def command_boundary_assay(
         print("Missing OPENROUTER_API_KEY. Add key to .env.", file=sys.stderr)
         return 2
 
+    if paid and target_slug.endswith(":free"):
+        target_slug = target_slug[:-5]
+
     h_path = Path(holdout_file) if holdout_file else HOLDOUT_BOUNDARY_FILE
     if not h_path.exists():
         print(f"Boundary holdout file not found: {h_path}. Running synthesize first...", file=sys.stderr)
@@ -2512,8 +2518,24 @@ def command_boundary_assay(
     holdouts = json.loads(h_path.read_text(encoding="utf-8"))
     holdout_hash = sha256_text(canonical_json(holdouts))
 
-    run_id = make_run_id("boundary")
-    run_dir = ensure_run_dir(run_id)
+    cached_attempts: dict[str, dict[str, Any]] = {}
+    if resume_ref:
+        target_dir = find_run_folder(resume_ref)
+        if not target_dir:
+            print(f"Cannot find run folder for resume reference: {resume_ref}", file=sys.stderr)
+            return 2
+        run_dir = target_dir
+        run_id = target_dir.name
+        attempts_file = run_dir / "raw" / "attempts.jsonl"
+        if attempts_file.exists():
+            for rec in load_jsonl(attempts_file):
+                if rec.get("ok") and rec.get("probe_id") and rec.get("response_json"):
+                    cached_attempts[rec["probe_id"]] = rec
+        print(f"Resuming run {run_id}: found {len(cached_attempts)} cached successful probes.")
+    else:
+        run_id = make_run_id("boundary")
+        run_dir = ensure_run_dir(run_id)
+        attempts_file = run_dir / "raw" / "attempts.jsonl"
 
     target_id = target_slug.replace("/", "-").replace(":", "-")
     target_info = {
@@ -2529,7 +2551,6 @@ def command_boundary_assay(
     print(f"Run folder: {run_dir}\n")
 
     session = requests.Session()
-    attempts_file = run_dir / "raw" / "attempts.jsonl"
     observations: list[dict[str, Any]] = []
 
     world_results = []
@@ -2564,6 +2585,23 @@ def command_boundary_assay(
                 }
                 print(f"    [{t_idx:02d}/{len(items):02d}] {interv.label} ... ", end="", flush=True)
 
+                cached = cached_attempts.get(probe_dict["id"])
+                if cached:
+                    raw_resp = ""
+                    if isinstance(cached.get("response_json"), dict):
+                        choices = cached["response_json"].get("choices", [])
+                        if choices:
+                            raw_resp = choices[0].get("message", {}).get("content") or ""
+                    state = sb.parse_response_state(raw_resp)
+                    obs_vec.append(state)
+                    is_match = state == interv.expected_state
+                    mark = "ok" if is_match else f"DIFF (got {state}, expected {interv.expected_state})"
+                    print(f"[cached {mark}] · {cached.get('elapsed_ms', 0):.0f} ms")
+                    continue
+
+                if delay > 0 and ordinal > 1:
+                    time.sleep(delay)
+
                 obs = perform_request(
                     session,
                     api_key,
@@ -2573,6 +2611,7 @@ def command_boundary_assay(
                     probe_dict,
                     envelope_id="envelope_a_minimal",
                     max_tokens=1024,
+                    max_retries=4,
                     on_attempt=lambda rec: append_jsonl(attempts_file, rec),
                 )
                 ordinal += 1
@@ -2594,28 +2633,47 @@ def command_boundary_assay(
                 if world_obj.mode == "INDEPENDENT" and not obj.is_twin and t_idx == 1 and not repeat_depth_checkpoints.get(world_obj.depth, True):
                     repeat_depth_checkpoints[world_obj.depth] = True
                     print(f"      [Repeat Control d={world_obj.depth}] Querying identical base prompt again ... ", end="", flush=True)
-                    obs_rep = perform_request(
-                        session,
-                        api_key,
-                        run_id,
-                        ordinal,
-                        target_info,
-                        probe_dict,
-                        envelope_id="envelope_a_minimal",
-                        max_tokens=1024,
-                        on_attempt=lambda rec: append_jsonl(attempts_file, rec),
-                    )
-                    ordinal += 1
-                    observations.append(asdict(obs_rep))
-                    raw_rep_resp = ""
-                    if obs_rep.response_json and isinstance(obs_rep.response_json, dict):
-                        choices_rep = obs_rep.response_json.get("choices", [])
-                        if choices_rep:
-                            raw_rep_resp = choices_rep[0].get("message", {}).get("content") or ""
-                    state_rep = sb.parse_response_state(raw_rep_resp)
-                    rep_is_match = (state == state_rep)
-                    repeat_matches.append(rep_is_match)
-                    print(f"{'MATCH' if rep_is_match else 'DRIFT'} (1st={state}, 2nd={state_rep}) · {obs_rep.elapsed_ms:.0f} ms")
+                    rep_probe_dict = {
+                        "id": f"{probe_dict['id']}_repeat_d{world_obj.depth}",
+                        "label": f"{probe_dict['label']} (Repeat Control)",
+                        "text": interv.prompt_text,
+                    }
+                    cached_rep = cached_attempts.get(rep_probe_dict["id"])
+                    if cached_rep:
+                        raw_rep = ""
+                        if isinstance(cached_rep.get("response_json"), dict):
+                            choices = cached_rep["response_json"].get("choices", [])
+                            if choices:
+                                raw_rep = choices[0].get("message", {}).get("content") or ""
+                        state_rep = sb.parse_response_state(raw_rep)
+                        is_repeat_match = state_rep == state
+                        repeat_matches.append(is_repeat_match)
+                        res_str = f"MATCH (1st={state}, 2nd={state_rep})" if is_repeat_match else f"MISMATCH (1st={state}, 2nd={state_rep})"
+                        print(f"[cached] {res_str} · {cached_rep.get('elapsed_ms', 0):.0f} ms")
+                    else:
+                        obs_rep = perform_request(
+                            session,
+                            api_key,
+                            run_id,
+                            ordinal,
+                            target_info,
+                            rep_probe_dict,
+                            envelope_id="envelope_a_minimal",
+                            max_tokens=1024,
+                            max_retries=4,
+                            on_attempt=lambda rec: append_jsonl(attempts_file, rec),
+                        )
+                        ordinal += 1
+                        raw_rep = ""
+                        if obs_rep.response_json and isinstance(obs_rep.response_json, dict):
+                            choices = obs_rep.response_json.get("choices", [])
+                            if choices:
+                                raw_rep = choices[0].get("message", {}).get("content") or ""
+                        state_rep = sb.parse_response_state(raw_rep)
+                        is_repeat_match = state_rep == state
+                        repeat_matches.append(is_repeat_match)
+                        res_str = f"MATCH (1st={state}, 2nd={state_rep})" if is_repeat_match else f"MISMATCH (1st={state}, 2nd={state_rep})"
+                        print(f"{res_str} · {obs_rep.elapsed_ms:.0f} ms")
 
             return obs_vec
 
@@ -2826,6 +2884,9 @@ def build_parser() -> argparse.ArgumentParser:
     bnd_assay = sub.add_parser("boundary-assay", help="Run Exploration 2B lineage laundering and depth boundary assay against target")
     bnd_assay.add_argument("--holdout", type=str, dest="holdout_file", help="Path to frozen boundary holdout JSON file")
     bnd_assay.add_argument("--target", type=str, default="stealth/ox-alpha", help="Target model slug (default stealth/ox-alpha)")
+    bnd_assay.add_argument("--paid", action="store_true", help="Use paid model route (strips :free suffix)")
+    bnd_assay.add_argument("--delay", type=float, default=DEFAULT_DELAY, help=f"Delay between calls in seconds (default {DEFAULT_DELAY})")
+    bnd_assay.add_argument("--resume", type=str, dest="resume_ref", help="Resume prior boundary run folder (e.g. --resume latest)")
     bnd_assay.add_argument("--open", action="store_true", dest="open_report", help="Open report.html in browser")
     bnd_assay.add_argument("--seed", type=int, default=DEFAULT_SEED, help=f"Seed for shuffle (default {DEFAULT_SEED})")
 
@@ -2873,7 +2934,15 @@ def main() -> int:
     if args.command == "boundary-synthesize":
         return command_boundary_synthesize(args.seed)
     if args.command == "boundary-assay":
-        return command_boundary_assay(args.open_report, args.seed, getattr(args, "holdout_file", None), args.target)
+        return command_boundary_assay(
+            args.open_report,
+            args.seed,
+            getattr(args, "holdout_file", None),
+            args.target,
+            getattr(args, "paid", False),
+            getattr(args, "delay", 0.0),
+            getattr(args, "resume_ref", None),
+        )
     if args.command in ("remote", "pilot"):
         return command_remote(
             seed=args.seed,

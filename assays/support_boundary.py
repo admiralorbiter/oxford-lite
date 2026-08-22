@@ -389,7 +389,7 @@ def generate_adversarial_boundary_twin(world: BoundaryWorld, seed: int) -> Bound
     # Reorder, relabel, and invert conjunctions in rules
     new_rules = []
     for r in world.rules:
-        new_r = r.replace(world.target_property, prop).replace("P", prop)
+        new_r = r.replace(world.target_property, prop)
         new_r = invert_rule_conjunctions(new_r)
         new_rules.append(new_r)
     rng.shuffle(new_rules)
