@@ -1960,6 +1960,7 @@ def manifest(
 
 WORLDS_DIR = ROOT / "worlds"
 HOLDOUT_WORLDS_FILE = WORLDS_DIR / "holdout" / "support_dynamics_holdout.json"
+HOLDOUT_BOUNDARY_FILE = WORLDS_DIR / "holdout" / "support_boundary_holdout.json"
 
 
 def command_dynamics_synthesize(count: int = 30, top_k: int = 8, seed: int = DEFAULT_SEED) -> int:
@@ -2314,6 +2315,359 @@ def command_dynamics_assay(
     return 0
 
 
+def command_boundary_synthesize(seed: int = DEFAULT_SEED) -> int:
+    """Synthesize candidate Exploration 2B boundary & laundering worlds and freeze holdout set."""
+    from assays import support_boundary as sb
+
+    print("OXFORD Exploration 2B: Lineage Laundering & Depth Boundary Synthesizer")
+    print("Synthesizing multi-depth and ancestral-overlap worlds with adversarial twins...")
+    corpus = sb.synthesize_boundary_corpus(seed=seed)
+
+    dev_dir = WORLDS_DIR / "development"
+    holdout_dir = WORLDS_DIR / "holdout"
+    dev_dir.mkdir(parents=True, exist_ok=True)
+    holdout_dir.mkdir(parents=True, exist_ok=True)
+
+    write_json(dev_dir / "boundary_candidates.json", corpus)
+    write_json(HOLDOUT_BOUNDARY_FILE, corpus)
+
+    holdout_hash = sha256_text(canonical_json(corpus))
+    print(f"\nSuccessfully froze {len(corpus)} boundary holdout worlds to {HOLDOUT_BOUNDARY_FILE}")
+    print(f"Exploration Firewall: STATUS=HOLDOUT, SHA-256={holdout_hash}")
+    print("\nFrozen Boundary Holdout World Trajectories:")
+    for i, item in enumerate(corpus, start=1):
+        w = item["world"]
+        gt = item["ground_truth"]
+        print(f"  [{i:02d}] {w['world_id']} ({w['mode']}, depth={w['depth']}): Target={w['target_entity']} {w['target_property']} | GT: {gt}")
+    return 0
+
+
+def render_boundary_html(
+    run_id: str,
+    results: list[dict[str, Any]],
+    overall_accuracy: float,
+    mean_stability: float,
+    indep_accuracy: float,
+    shared_accuracy: float,
+    launder_accuracy: float,
+) -> str:
+    """Render interactive HTML report for Exploration 2B boundary assay."""
+    rows = []
+    for res in results:
+        w_id = html.escape(res["world_id"])
+        mode = html.escape(res["mode"])
+        depth = res["depth"]
+        obs_vec = res["observed_vector"]
+        twin_vec = res["twin_observed_vector"]
+        gt_vec = res["ground_truth_vector"]
+        acc = res["accuracy"]
+        stab = res["stability"]
+
+        cells_base = [
+            f"<td rowspan='2'><strong>{w_id}</strong><div class='small muted'>{mode} (d={depth})</div></td>",
+            "<td><span class='small muted'>Base (W)</span></td>"
+        ]
+        for obs, exp in zip(obs_vec, gt_vec):
+            cls = "badge-good" if obs == exp else "badge-bad"
+            cells_base.append(f"<td><span class='badge {cls}'>{html.escape(obs)}</span></td>")
+        # Pad with empty cells if fewer than max conditions
+        for _ in range(6 - len(obs_vec)):
+            cells_base.append("<td><span class='small muted'>—</span></td>")
+        cells_base.append(f"<td rowspan='2'><strong>{acc * 100:.0f}%</strong></td>")
+        cells_base.append(f"<td rowspan='2'><strong>{stab * 100:.0f}%</strong></td>")
+        rows.append("<tr>" + "".join(cells_base) + "</tr>")
+
+        cells_twin = ["<td><span class='small muted'>Twin (W')</span></td>"]
+        for obs, exp in zip(twin_vec, gt_vec):
+            cls = "badge-good" if obs == exp else "badge-bad"
+            cells_twin.append(f"<td><span class='badge {cls}'>{html.escape(obs)}</span></td>")
+        for _ in range(6 - len(twin_vec)):
+            cells_twin.append("<td><span class='small muted'>—</span></td>")
+        rows.append("<tr style='background:rgba(0,0,0,0.015);'>" + "".join(cells_twin) + "</tr>")
+
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OXFORD Boundary &amp; Laundering · {html.escape(run_id)}</title>
+<style>
+:root {{ --ink:#111827; --muted:#667085; --line:#e5e7eb; --paper:#ffffff; --wash:#f6f7f9; --accent:#7a3e9d; --good:#166534; --bad:#991b1b; }}
+* {{ box-sizing:border-box; }}
+body {{ margin:0; font-family:Inter, ui-sans-serif, system-ui, sans-serif; color:var(--ink); background:var(--wash); }}
+.shell {{ max-width:1120px; margin:0 auto; padding:34px 22px 64px; }}
+.hero {{ background:linear-gradient(135deg,#064e3b,#047857 62%,#0f766e); color:white; border-radius:22px; padding:30px 32px 28px; box-shadow:0 12px 35px rgba(6,78,59,.14); }}
+.eyebrow {{ font-size:12px; letter-spacing:.14em; font-weight:800; opacity:.78; }}
+h1 {{ margin:8px 0 4px; font-size:34px; letter-spacing:-.04em; }}
+.sub {{ max-width:760px; color:#d1fae5; line-height:1.55; }}
+.grid {{ display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin:18px 0; }}
+.card {{ background:var(--paper); border:1px solid var(--line); border-radius:16px; padding:16px; }}
+.card .k {{ color:var(--muted); font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; }}
+.card .v {{ margin-top:6px; font-size:22px; font-weight:800; }}
+section {{ background:var(--paper); border:1px solid var(--line); border-radius:16px; margin-top:14px; padding:22px; }}
+table {{ width:100%; border-collapse:collapse; margin-top:14px; font-size:13px; }}
+th {{ text-align:left; color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.06em; padding:10px 8px; border-bottom:1px solid var(--line); }}
+td {{ padding:8px; border-bottom:1px solid #eef0f3; vertical-align:middle; }}
+.badge {{ display:inline-block; padding:3px 7px; border-radius:6px; font-size:11px; font-weight:700; font-family:monospace; }}
+.badge-good {{ background:#dcfce7; color:var(--good); }}
+.badge-bad {{ background:#fee2e2; color:var(--bad); }}
+.muted {{ color:var(--muted); }}
+.small {{ font-size:11px; }}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="hero">
+    <div class="eyebrow">OXFORD · EXPLORATION 2B</div>
+    <h1>Lineage Laundering &amp; Depth Failure Boundary</h1>
+    <div class="sub">Testing epistemic collapse under Shared Ancestry, Laundered Echo derivative reports, and Derivation Depth (d=2..5).</div>
+  </div>
+
+  <div class="grid">
+    <div class="card"><div class="k">Overall Accuracy</div><div class="v">{overall_accuracy * 100:.1f}%</div></div>
+    <div class="card"><div class="k">Isomorphic Stability</div><div class="v">{mean_stability * 100:.1f}%</div></div>
+    <div class="card"><div class="k">Independent (d=2..5)</div><div class="v">{indep_accuracy * 100:.0f}%</div></div>
+    <div class="card"><div class="k">Shared Root Collapse</div><div class="v">{shared_accuracy * 100:.0f}%</div></div>
+    <div class="card"><div class="k">Laundered Echo Collapse</div><div class="v">{launder_accuracy * 100:.0f}%</div></div>
+  </div>
+
+  <section>
+    <h2>Causal Trajectory Response Matrix</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>World</th>
+          <th>Variant</th>
+          <th>C01 (Base)</th>
+          <th>C02 (Lesion)</th>
+          <th>C03 (Cut/Coll)</th>
+          <th>C04 (Cut/Rsc)</th>
+          <th>C05 (Rsc)</th>
+          <th>C99 (Sham)</th>
+          <th>Accuracy</th>
+          <th>Stability</th>
+        </tr>
+      </thead>
+      <tbody>{''.join(rows)}</tbody>
+    </table>
+  </section>
+</div>
+</body>
+</html>"""
+
+
+def command_boundary_assay(
+    open_report: bool,
+    seed: int,
+    holdout_file: str | None = None,
+    target_slug: str = "stealth/ox-alpha",
+) -> int:
+    """Execute Exploration 2B lineage laundering and depth boundary assay."""
+    from assays import support_boundary as sb
+
+    load_dotenv(ROOT / ".env")
+    api_key = os.getenv("OPENROUTER_API_KEY", "").strip()
+    if not api_key:
+        print("Missing OPENROUTER_API_KEY. Add key to .env.", file=sys.stderr)
+        return 2
+
+    h_path = Path(holdout_file) if holdout_file else HOLDOUT_BOUNDARY_FILE
+    if not h_path.exists():
+        print(f"Boundary holdout file not found: {h_path}. Running synthesize first...", file=sys.stderr)
+        command_boundary_synthesize(seed=seed)
+
+    holdouts = json.loads(h_path.read_text(encoding="utf-8"))
+    holdout_hash = sha256_text(canonical_json(holdouts))
+
+    run_id = make_run_id("boundary")
+    run_dir = ensure_run_dir(run_id)
+
+    target_id = target_slug.replace("/", "-").replace(":", "-")
+    target_info = {
+        "id": target_id,
+        "slug": target_slug,
+        "label": target_slug.split("/")[-1],
+        "role": "target",
+    }
+
+    print("OXFORD Exploration 2B: Lineage Laundering & Depth Boundary Assay")
+    print(f"Target: {target_slug}")
+    print(f"Loaded {len(holdouts)} frozen boundary holdouts with paired twins (SHA-256={holdout_hash[:16]}...)")
+    print(f"Run folder: {run_dir}\n")
+
+    session = requests.Session()
+    attempts_file = run_dir / "raw" / "attempts.jsonl"
+    observations: list[dict[str, Any]] = []
+
+    world_results = []
+    all_observed = []
+    all_expected = []
+    stabilities = []
+    ordinal = 1
+
+    for w_idx, item in enumerate(holdouts, start=1):
+        world_obj = sb.BoundaryWorld(**item["world"])
+        twin_obj = sb.BoundaryWorld(**item["twin"])
+        traj_items = [sb.BoundaryIntervention(**t) for t in item["trajectory"]]
+        twin_traj_items = [sb.BoundaryIntervention(**t) for t in item["twin_trajectory"]]
+        gt_vector = item["ground_truth"]
+
+        print(f"=== World [{w_idx}/{len(holdouts)}]: {world_obj.world_id} ({world_obj.mode}, d={world_obj.depth}) ===")
+
+        # 1. Base World Trajectory
+        print("  [Base World W]")
+        observed_vector = []
+        for t_idx, interv in enumerate(traj_items, start=1):
+            probe_dict = {
+                "id": f"{world_obj.world_id}_{interv.condition_id}",
+                "label": f"{world_obj.world_id} {interv.label}",
+                "text": interv.prompt_text,
+            }
+            print(f"    [{t_idx:02d}/{len(traj_items):02d}] {interv.label} ... ", end="", flush=True)
+
+            obs = perform_request(
+                session,
+                api_key,
+                run_id,
+                ordinal,
+                target_info,
+                probe_dict,
+                envelope_id="envelope_a_minimal",
+                max_tokens=1024,
+                on_attempt=lambda rec: append_jsonl(attempts_file, rec),
+            )
+            ordinal += 1
+            observations.append(asdict(obs))
+
+            raw_resp = ""
+            if obs.response_json and isinstance(obs.response_json, dict):
+                choices = obs.response_json.get("choices", [])
+                if choices:
+                    raw_resp = choices[0].get("message", {}).get("content") or ""
+
+            state = sb.parse_response_state(raw_resp)
+            observed_vector.append(state)
+            is_match = state == interv.expected_state
+            mark = "ok" if is_match else f"DIFF (got {state}, expected {interv.expected_state})"
+            print(f"{mark} · {obs.elapsed_ms:.0f} ms")
+
+        # 2. Isomorphic Twin Trajectory
+        print("  [Isomorphic Twin W']")
+        twin_observed_vector = []
+        for t_idx, interv in enumerate(twin_traj_items, start=1):
+            probe_dict = {
+                "id": f"{twin_obj.world_id}_{interv.condition_id}",
+                "label": f"{twin_obj.world_id} {interv.label}",
+                "text": interv.prompt_text,
+            }
+            print(f"    [{t_idx:02d}/{len(twin_traj_items):02d}] {interv.label} (twin) ... ", end="", flush=True)
+
+            obs = perform_request(
+                session,
+                api_key,
+                run_id,
+                ordinal,
+                target_info,
+                probe_dict,
+                envelope_id="envelope_a_minimal",
+                max_tokens=1024,
+                on_attempt=lambda rec: append_jsonl(attempts_file, rec),
+            )
+            ordinal += 1
+            observations.append(asdict(obs))
+
+            raw_resp = ""
+            if obs.response_json and isinstance(obs.response_json, dict):
+                choices = obs.response_json.get("choices", [])
+                if choices:
+                    raw_resp = choices[0].get("message", {}).get("content") or ""
+
+            state = sb.parse_response_state(raw_resp)
+            twin_observed_vector.append(state)
+            is_match = state == interv.expected_state
+            mark = "ok" if is_match else f"DIFF (got {state}, expected {interv.expected_state})"
+            print(f"{mark} · {obs.elapsed_ms:.0f} ms")
+
+        acc_base = sb.trajectory_accuracy(observed_vector, gt_vector)
+        acc_twin = sb.trajectory_accuracy(twin_observed_vector, gt_vector)
+        mean_world_acc = (acc_base + acc_twin) / 2.0
+        stability = 1.0 - sb.trajectory_distance(observed_vector, twin_observed_vector)
+        stabilities.append(stability)
+
+        all_observed.extend(observed_vector)
+        all_observed.extend(twin_observed_vector)
+        all_expected.extend(gt_vector)
+        all_expected.extend(gt_vector)
+
+        print(f"  --> World {world_obj.world_id} Result: Base Acc={acc_base*100:.0f}%, Twin Acc={acc_twin*100:.0f}%, Stability={stability*100:.0f}%\n")
+
+        world_results.append({
+            "world_id": world_obj.world_id,
+            "mode": world_obj.mode,
+            "depth": world_obj.depth,
+            "target": f"{world_obj.target_entity} {world_obj.target_property}",
+            "observed_vector": observed_vector,
+            "twin_observed_vector": twin_observed_vector,
+            "ground_truth_vector": gt_vector,
+            "accuracy": mean_world_acc,
+            "stability": stability,
+        })
+
+    total_acc = sb.trajectory_accuracy(all_observed, all_expected)
+    mean_stab = statistics.fmean(stabilities) if stabilities else 1.0
+
+    ind_results = [r for r in world_results if r["mode"] == "INDEPENDENT"]
+    shared_results = [r for r in world_results if r["mode"] == "SHARED_ROOT"]
+    launder_results = [r for r in world_results if r["mode"] == "LAUNDERED_ECHO"]
+
+    ind_acc = statistics.fmean([r["accuracy"] for r in ind_results]) if ind_results else 0.0
+    shared_acc = statistics.fmean([r["accuracy"] for r in shared_results]) if shared_results else 0.0
+    launder_acc = statistics.fmean([r["accuracy"] for r in launder_results]) if launder_results else 0.0
+
+    manifest_data = {
+        "run_id": run_id,
+        "kind": "support_boundary_assay",
+        "target": target_info,
+        "firewall_status": "HOLDOUT",
+        "holdout_corpus_sha256": holdout_hash,
+        "created_at_utc": utc_now(),
+        "total_trajectories": len(world_results) * 2,
+        "total_requests": len(observations),
+    }
+    write_json(run_dir / "manifest.json", manifest_data)
+    write_jsonl(run_dir / "raw" / "observations.jsonl", observations)
+
+    summary = {
+        "run_id": run_id,
+        "target": target_slug,
+        "overall_trajectory_accuracy": total_acc,
+        "within_model_isomorphic_stability": mean_stab,
+        "independent_depth_accuracy": ind_acc,
+        "shared_root_collapse_accuracy": shared_acc,
+        "laundered_echo_collapse_accuracy": launder_acc,
+        "world_trajectories": world_results,
+    }
+    write_json(run_dir / "summary.json", summary)
+
+    report_html = render_boundary_html(run_id, world_results, total_acc, mean_stab, ind_acc, shared_acc, launder_acc)
+    report_path = run_dir / "report.html"
+    report_path.write_text(report_html, encoding="utf-8")
+
+    print("=" * 65)
+    print("OXFORD EXPLORATION 2B: BOUNDARY & LAUNDERING RESULTS")
+    print("=" * 65)
+    print(f"Overall Trajectory Accuracy:        {total_acc * 100:.1f}%")
+    print(f"Within-Model Isomorphic Stability:  {mean_stab * 100:.1f}% (invariance across permuted twins)")
+    print(f"Independent Multi-Depth (d=2..5):   {ind_acc * 100:.1f}%")
+    print(f"Shared Root Collapse Tracking:      {shared_acc * 100:.1f}%")
+    print(f"Laundered Echo Collapse Tracking:   {launder_acc * 100:.1f}%")
+    print("=" * 65)
+    print(f"HTML Report: {report_path}")
+    if open_report:
+        webbrowser.open(report_path.resolve().as_uri())
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="oxford.py",
@@ -2377,6 +2731,16 @@ def build_parser() -> argparse.ArgumentParser:
     dyn_assay.add_argument("--open", action="store_true", dest="open_report", help="Open report.html in browser")
     dyn_assay.add_argument("--seed", type=int, default=DEFAULT_SEED, help=f"Seed for shuffle (default {DEFAULT_SEED})")
 
+    # Exploration 2B: Lineage Laundering & Depth Boundary
+    bnd_synth = sub.add_parser("boundary-synthesize", help="Synthesize Exploration 2B boundary and laundering worlds and freeze holdout set")
+    bnd_synth.add_argument("--seed", type=int, default=DEFAULT_SEED, help=f"Simulation seed (default {DEFAULT_SEED})")
+
+    bnd_assay = sub.add_parser("boundary-assay", help="Run Exploration 2B lineage laundering and depth boundary assay against target")
+    bnd_assay.add_argument("--holdout", type=str, dest="holdout_file", help="Path to frozen boundary holdout JSON file")
+    bnd_assay.add_argument("--target", type=str, default="stealth/ox-alpha", help="Target model slug (default stealth/ox-alpha)")
+    bnd_assay.add_argument("--open", action="store_true", dest="open_report", help="Open report.html in browser")
+    bnd_assay.add_argument("--seed", type=int, default=DEFAULT_SEED, help=f"Seed for shuffle (default {DEFAULT_SEED})")
+
     # Local Assay (Ollama)
     local = sub.add_parser("local", help="Run local assays against Ollama")
     local.add_argument("--open", action="store_true", dest="open_report", help="Open report.html in browser")
@@ -2418,6 +2782,10 @@ def main() -> int:
         return command_dynamics_synthesize(args.count, args.top_k, args.seed)
     if args.command == "dynamics-assay":
         return command_dynamics_assay(args.open_report, args.seed, getattr(args, "holdout_file", None), args.target)
+    if args.command == "boundary-synthesize":
+        return command_boundary_synthesize(args.seed)
+    if args.command == "boundary-assay":
+        return command_boundary_assay(args.open_report, args.seed, getattr(args, "holdout_file", None), args.target)
     if args.command in ("remote", "pilot"):
         return command_remote(
             seed=args.seed,
