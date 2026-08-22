@@ -60,18 +60,13 @@ python scratch/test_local_qwen.py
 
 ## 3. Background Tasks & Run Manifest
 
-### Active Background Task
-* **`task-2305`**: `python oxford.py acquisition-assay --target z-ai/glm-5-turbo --delay 0.5`
-  * *Run Directory*: `runs/20260821-232943-acquisition`
-  * *Log File*: `C:\Users\admir\.gemini\antigravity\brain\fff07571-8146-47a1-91d0-1ccf80f6f5bf\.system_generated\tasks\task-2305.log`
-  * *Progress*: Executing World 8+ of 12. **Will run in the background until completion.**
-
 ### Completed Golden Datasets
 * `runs/20260821-204102-acquisition` — `stealth/ox-alpha` (144 decisions)
-* `runs/20260821-211156-acquisition` — `openai/gpt-4o-mini` (127 decisions)
-* `runs/20260821-214232-acquisition` — `poolside/laguna-s-2.1:free` (45 decisions)
-* `runs/20260821-223308-acquisition` — `z-ai/glm-5.2` (144 decisions)
-* `runs/20260821-225151-acquisition` — `z-ai/glm-5.3` (144 decisions)
+* `runs/20260821-232943-acquisition` — `z-ai/glm-5-turbo` (144 decisions, $D_{\text{acq}} = 4.2\%$ to Ox)
+* `runs/20260821-223308-acquisition` — `z-ai/glm-5.2` (144 decisions, $D_{\text{acq}} = 5.2\%$ to Ox)
+* `runs/20260821-225151-acquisition` — `z-ai/glm-5.3` (144 decisions, $D_{\text{acq}} = 16.7\%$ to Ox)
+* `runs/20260821-214232-acquisition` — `poolside/laguna-s-2.1:free` (45 decisions, $D_{\text{acq}} = 10.7\%$ to Ox)
+* `runs/20260821-211156-acquisition` — `openai/gpt-4o-mini` (127 decisions, $D_{\text{acq}} = 28.6\%$ to Ox)
 
 ---
 
