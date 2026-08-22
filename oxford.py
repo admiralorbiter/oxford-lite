@@ -2513,80 +2513,53 @@ def command_boundary_assay(
         gt_vector = item["ground_truth"]
 
         print(f"=== World [{w_idx}/{len(holdouts)}]: {world_obj.world_id} ({world_obj.mode}, d={world_obj.depth}) ===")
+        run_base_first = (w_idx % 2 == 1)
 
-        # 1. Base World Trajectory
-        print("  [Base World W]")
-        observed_vector = []
-        for t_idx, interv in enumerate(traj_items, start=1):
-            probe_dict = {
-                "id": f"{world_obj.world_id}_{interv.condition_id}",
-                "label": f"{world_obj.world_id} {interv.label}",
-                "text": interv.prompt_text,
-            }
-            print(f"    [{t_idx:02d}/{len(traj_items):02d}] {interv.label} ... ", end="", flush=True)
+        def execute_branch(obj: sb.BoundaryWorld, items: list[sb.BoundaryIntervention], label_suffix: str) -> list[str]:
+            nonlocal ordinal
+            print(f"  [{label_suffix}]")
+            obs_vec = []
+            for t_idx, interv in enumerate(items, start=1):
+                probe_dict = {
+                    "id": f"{obj.world_id}_{interv.condition_id}",
+                    "label": f"{obj.world_id} {interv.label}",
+                    "text": interv.prompt_text,
+                }
+                print(f"    [{t_idx:02d}/{len(items):02d}] {interv.label} ... ", end="", flush=True)
 
-            obs = perform_request(
-                session,
-                api_key,
-                run_id,
-                ordinal,
-                target_info,
-                probe_dict,
-                envelope_id="envelope_a_minimal",
-                max_tokens=1024,
-                on_attempt=lambda rec: append_jsonl(attempts_file, rec),
-            )
-            ordinal += 1
-            observations.append(asdict(obs))
+                obs = perform_request(
+                    session,
+                    api_key,
+                    run_id,
+                    ordinal,
+                    target_info,
+                    probe_dict,
+                    envelope_id="envelope_a_minimal",
+                    max_tokens=1024,
+                    on_attempt=lambda rec: append_jsonl(attempts_file, rec),
+                )
+                ordinal += 1
+                observations.append(asdict(obs))
 
-            raw_resp = ""
-            if obs.response_json and isinstance(obs.response_json, dict):
-                choices = obs.response_json.get("choices", [])
-                if choices:
-                    raw_resp = choices[0].get("message", {}).get("content") or ""
+                raw_resp = ""
+                if obs.response_json and isinstance(obs.response_json, dict):
+                    choices = obs.response_json.get("choices", [])
+                    if choices:
+                        raw_resp = choices[0].get("message", {}).get("content") or ""
 
-            state = sb.parse_response_state(raw_resp)
-            observed_vector.append(state)
-            is_match = state == interv.expected_state
-            mark = "ok" if is_match else f"DIFF (got {state}, expected {interv.expected_state})"
-            print(f"{mark} · {obs.elapsed_ms:.0f} ms")
+                state = sb.parse_response_state(raw_resp)
+                obs_vec.append(state)
+                is_match = state == interv.expected_state
+                mark = "ok" if is_match else f"DIFF (got {state}, expected {interv.expected_state})"
+                print(f"{mark} · {obs.elapsed_ms:.0f} ms")
+            return obs_vec
 
-        # 2. Isomorphic Twin Trajectory
-        print("  [Isomorphic Twin W']")
-        twin_observed_vector = []
-        for t_idx, interv in enumerate(twin_traj_items, start=1):
-            probe_dict = {
-                "id": f"{twin_obj.world_id}_{interv.condition_id}",
-                "label": f"{twin_obj.world_id} {interv.label}",
-                "text": interv.prompt_text,
-            }
-            print(f"    [{t_idx:02d}/{len(twin_traj_items):02d}] {interv.label} (twin) ... ", end="", flush=True)
-
-            obs = perform_request(
-                session,
-                api_key,
-                run_id,
-                ordinal,
-                target_info,
-                probe_dict,
-                envelope_id="envelope_a_minimal",
-                max_tokens=1024,
-                on_attempt=lambda rec: append_jsonl(attempts_file, rec),
-            )
-            ordinal += 1
-            observations.append(asdict(obs))
-
-            raw_resp = ""
-            if obs.response_json and isinstance(obs.response_json, dict):
-                choices = obs.response_json.get("choices", [])
-                if choices:
-                    raw_resp = choices[0].get("message", {}).get("content") or ""
-
-            state = sb.parse_response_state(raw_resp)
-            twin_observed_vector.append(state)
-            is_match = state == interv.expected_state
-            mark = "ok" if is_match else f"DIFF (got {state}, expected {interv.expected_state})"
-            print(f"{mark} · {obs.elapsed_ms:.0f} ms")
+        if run_base_first:
+            observed_vector = execute_branch(world_obj, traj_items, "Base World W (Order: 1st)")
+            twin_observed_vector = execute_branch(twin_obj, twin_traj_items, "Isomorphic Twin W' (Order: 2nd)")
+        else:
+            twin_observed_vector = execute_branch(twin_obj, twin_traj_items, "Isomorphic Twin W' (Order: 1st)")
+            observed_vector = execute_branch(world_obj, traj_items, "Base World W (Order: 2nd)")
 
         acc_base = sb.trajectory_accuracy(observed_vector, gt_vector)
         acc_twin = sb.trajectory_accuracy(twin_observed_vector, gt_vector)

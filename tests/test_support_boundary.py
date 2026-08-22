@@ -1,5 +1,5 @@
 """
-Unit tests for OXFORD Exploration 2B: Support Boundary & Lineage Laundering Assay
+Unit tests for OXFORD Exploration 2B.1: Formal Graph Support Boundary & Lineage Laundering Assay
 """
 
 import unittest
@@ -8,28 +8,39 @@ from assays import support_boundary as sb
 
 
 class SupportBoundaryTests(unittest.TestCase):
-    def test_independent_world_generation(self):
+    def test_independent_world_generation_formal_horn(self):
         w = sb.generate_independent_world("w_ind_01", seed=42, depth=3, distractors=2)
         self.assertEqual(w.world_id, "w_ind_01")
         self.assertEqual(w.mode, "INDEPENDENT")
         self.assertEqual(w.depth, 3)
         self.assertEqual(len(w.root_facts), 2)
         self.assertEqual(len(w.distractor_facts), 2)
-        self.assertEqual(len(w.rules), 2)
+        # Depth 3 has (2 relays + 1 auth) * 2 paths = 6 intermediate facts
+        self.assertEqual(len(w.intermediate_facts), 6)
+        # 6 formal step-by-step Horn rules
+        self.assertEqual(len(w.rules), 6)
 
-    def test_shared_root_world_generation(self):
-        w = sb.generate_shared_root_world("w_shared_01", seed=42, depth=2, distractors=1)
-        self.assertEqual(w.world_id, "w_shared_01")
-        self.assertEqual(w.mode, "SHARED_ROOT")
-        self.assertEqual(len(w.root_facts), 1)
-        self.assertEqual(len(w.intermediate_facts), 2)
+    def test_shared_root_world_generation_multi_hop(self):
+        w_d2 = sb.generate_shared_root_world("w_shared_d2", seed=42, depth=2, distractors=1)
+        w_d4 = sb.generate_shared_root_world("w_shared_d4", seed=42, depth=4, distractors=1)
+        self.assertEqual(w_d2.depth, 2)
+        self.assertEqual(w_d4.depth, 4)
+        # Depth 4 has more intermediate steps than Depth 2
+        self.assertGreater(len(w_d4.intermediate_facts), len(w_d2.intermediate_facts))
 
-    def test_laundered_echo_world_generation(self):
+    def test_laundered_echo_world_explicitly_valid(self):
         w = sb.generate_laundered_echo_world("w_laundered_01", seed=42, distractors=2)
         self.assertEqual(w.world_id, "w_laundered_01")
         self.assertEqual(w.mode, "LAUNDERED_ECHO")
-        self.assertEqual(len(w.root_facts), 1)  # Raw unconfirmed signal log
-        self.assertEqual(len(w.intermediate_facts), 3)  # 3 derivative echo reports
+        self.assertEqual(len(w.root_facts), 1)
+        self.assertEqual(len(w.intermediate_facts), 3)
+        # Primary log is explicitly verified in baseline
+        self.assertIn("verified", w.fact_descriptions[w.root_facts[0]].lower())
+
+    def test_ast_conjunction_inversion(self):
+        rule = "If entity is connected to node X AND node X forwards connection to node Y, then entity is connected to node Y."
+        inverted = sb.invert_rule_conjunctions(rule)
+        self.assertTrue(inverted.startswith("If node X forwards connection to node Y AND entity is connected to node X, then entity is connected to node Y."))
 
     def test_adversarial_twin_isomorphism(self):
         w = sb.generate_independent_world("w_ind_01", seed=42, depth=3, distractors=2)
@@ -38,7 +49,6 @@ class SupportBoundaryTests(unittest.TestCase):
         self.assertEqual(twin.twin_of, "w_ind_01")
         self.assertNotEqual(w.target_entity, twin.target_entity)
         self.assertNotEqual(w.target_property, twin.target_property)
-        # Check fact IDs are scrambled
         self.assertTrue(any("FACT_TWIN" in fid for fid in twin.fact_descriptions.keys()))
 
     def test_independent_trajectory_ground_truth(self):
@@ -70,13 +80,14 @@ class SupportBoundaryTests(unittest.TestCase):
         self.assertEqual(sb.parse_response_state("The state is UNKNOWN"), "FORMAT_FAILURE")
         self.assertEqual(sb.parse_response_state(""), "FORMAT_FAILURE")
 
-    def test_synthesize_boundary_corpus(self):
+    def test_synthesize_boundary_corpus_balanced(self):
         corpus = sb.synthesize_boundary_corpus(seed=42)
-        # 4 IND + 2 SHARED + 2 LAUNDERED = 8 worlds
-        self.assertEqual(len(corpus), 8)
+        # 8 IND (2 per depth d=2..5) + 2 SHARED (d=2,4) + 2 LAUNDERED = 12 worlds
+        self.assertEqual(len(corpus), 12)
         self.assertIn("world", corpus[0])
         self.assertIn("twin", corpus[0])
-        self.assertEqual(corpus[0]["mode"], "INDEPENDENT")
+        ind_worlds = [c for c in corpus if c["mode"] == "INDEPENDENT"]
+        self.assertEqual(len(ind_worlds), 8)
 
 
 if __name__ == "__main__":

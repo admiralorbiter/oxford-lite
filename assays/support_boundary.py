@@ -1,11 +1,12 @@
 """
-OXFORD Exploration 2B: Support Boundary & Lineage Laundering Assay
-==================================================================
-Procedural generation, counterfactual trajectory compilation, and
-adversarial isomorphic twin validation for:
+OXFORD Exploration 2B.1: Formal Graph Support Boundary & Lineage Laundering Assay
+================================================================================
+Procedural generation, formal step-by-step Horn rule deduction chains,
+counterfactual trajectory compilation, and adversarial isomorphic twin validation for:
   - Ancestral Overlap / Lineage Laundering (INDEPENDENT, SHARED_ROOT, LAUNDERED_ECHO)
-  - Inferential Derivation Depth (d = 2, 3, 4, 5 hops)
-  - Distractor Load (z = 0, 4, 8)
+  - Formal Derivation Depth (d = 2, 3, 4, 5 step-by-step rule hops)
+  - Multi-Seed Balanced Design
+  - Randomized Twin Execution Order
 """
 
 from __future__ import annotations
@@ -139,11 +140,11 @@ def trajectory_accuracy(observed: list[str], expected: list[str]) -> float:
 
 
 # =========================================================================
-# PROCEDURAL GENERATION: LINEAGE LAUNDERING & DEPTH CHAINS
+# PROCEDURAL GENERATION: FORMAL STEP-BY-STEP HORN DEDUCTION CHAINS
 # =========================================================================
 
 def generate_independent_world(world_id: str, seed: int, depth: int = 2, distractors: int = 0) -> BoundaryWorld:
-    """Generate world with two truly independent support paths."""
+    """Generate world with two truly independent multi-hop Horn derivation paths."""
     rng = random.Random(seed)
     ents = rng.sample(ENTITY_PREFIXES, 8)
     target = f"{ents[0]}_{rng.randint(10, 99)}"
@@ -153,50 +154,51 @@ def generate_independent_world(world_id: str, seed: int, depth: int = 2, distrac
     root_facts = []
     intermediate_facts = []
 
-    # Path 1: Root A1 -> I1_1 -> ... -> Target is P
+    # Path 1: Root R1 -> Node 0 -> Node 1 ... -> Node d-1 -> holds Auth 1
     r1 = f"ROOT_A_{world_id}"
     root_facts.append(r1)
-    prev_node_1 = f"NODE_{ents[1]}_{rng.randint(10, 99)}"
-    fact_descriptions[r1] = f"{target} initiates channel with {prev_node_1}."
+    nodes_1 = [f"NODE_{ents[1]}_{rng.randint(10, 99)}_{i}" for i in range(depth)]
+    fact_descriptions[r1] = f"{target} initiates relay with {nodes_1[0]}."
 
-    curr_1 = prev_node_1
-    rules = []
-    for d in range(1, depth):
-        next_node = f"NODE_{ents[2]}_{rng.randint(10, 99)}_{d}"
-        f_mid = f"HOP_1_{d}_{world_id}"
-        intermediate_facts.append(f_mid)
-        fact_descriptions[f_mid] = f"{curr_1} relays pulse to {next_node}."
-        curr_1 = next_node
+    for i in range(depth - 1):
+        f_relay = f"RELAY_A_{i+1}_{world_id}"
+        intermediate_facts.append(f_relay)
+        fact_descriptions[f_relay] = f"{nodes_1[i]} forwards connection to {nodes_1[i+1]}."
 
-    f_auth_1 = f"AUTH_1_{world_id}"
+    f_auth_1 = f"AUTH_A_{world_id}"
     intermediate_facts.append(f_auth_1)
-    fact_descriptions[f_auth_1] = f"{curr_1} holds valid cryptographic verification for {prop}."
-    rules.append(f"If an entity has an unbroken relay to a node holding valid cryptographic verification for {prop}, then that entity is {prop}.")
+    fact_descriptions[f_auth_1] = f"{nodes_1[-1]} holds valid cryptographic verification for {prop}."
 
-    # Path 2: Root A2 -> I2_1 -> ... -> Target is P
+    # Path 2: Root R2 -> Conduit 0 -> Conduit 1 ... -> Conduit d-1 -> holds Auth 2
     r2 = f"ROOT_B_{world_id}"
     root_facts.append(r2)
-    prev_node_2 = f"CONDUIT_{ents[3]}_{rng.randint(10, 99)}"
-    fact_descriptions[r2] = f"{target} binds to conduit {prev_node_2}."
+    nodes_2 = [f"CONDUIT_{ents[2]}_{rng.randint(10, 99)}_{i}" for i in range(depth)]
+    fact_descriptions[r2] = f"{target} binds to {nodes_2[0]}."
 
-    curr_2 = prev_node_2
-    for d in range(1, depth):
-        next_node = f"CONDUIT_{ents[4]}_{rng.randint(10, 99)}_{d}"
-        f_mid = f"HOP_2_{d}_{world_id}"
-        intermediate_facts.append(f_mid)
-        fact_descriptions[f_mid] = f"{curr_2} maintains conduit linkage to {next_node}."
-        curr_2 = next_node
+    for i in range(depth - 1):
+        f_link = f"LINK_B_{i+1}_{world_id}"
+        intermediate_facts.append(f_link)
+        fact_descriptions[f_link] = f"{nodes_2[i]} links to {nodes_2[i+1]}."
 
-    f_auth_2 = f"AUTH_2_{world_id}"
+    f_auth_2 = f"AUTH_B_{world_id}"
     intermediate_facts.append(f_auth_2)
-    fact_descriptions[f_auth_2] = f"{curr_2} satisfies primary resonance for {prop}."
-    rules.append(f"If an entity maintains an unbroken conduit linkage to a node satisfying primary resonance for {prop}, then that entity is {prop}.")
+    fact_descriptions[f_auth_2] = f"{nodes_2[-1]} satisfies primary resonance for {prop}."
+
+    # Step-by-step formal Horn rules
+    rules = [
+        f"If an entity initiates relay with node N, then that entity is connected to node N.",
+        f"If an entity is connected to node X AND node X forwards connection to node Y, then that entity is connected to node Y.",
+        f"If an entity is connected to node N AND node N holds valid cryptographic verification for {prop}, then that entity is {prop}.",
+        f"If an entity binds to conduit C, then that entity is coupled to conduit C.",
+        f"If an entity is coupled to conduit X AND conduit X links to conduit Y, then that entity is coupled to conduit Y.",
+        f"If an entity is coupled to conduit C AND conduit C satisfies primary resonance for {prop}, then that entity is {prop}.",
+    ]
 
     distractor_facts = []
     for z in range(distractors):
         f_dist = f"TELEMETRY_{z+1}_{world_id}"
         distractor_facts.append(f_dist)
-        dist_ent = f"{ents[5]}_{rng.randint(10, 99)}_{z}"
+        dist_ent = f"{ents[3]}_{rng.randint(10, 99)}_{z}"
         fact_descriptions[f_dist] = f"Peripheral sensor {dist_ent} operates on modulation index {rng.randint(1, 9)}."
 
     return BoundaryWorld(
@@ -215,7 +217,7 @@ def generate_independent_world(world_id: str, seed: int, depth: int = 2, distrac
 
 
 def generate_shared_root_world(world_id: str, seed: int, depth: int = 2, distractors: int = 0) -> BoundaryWorld:
-    """Generate world where a single root A feeds two nominal downstream paths."""
+    """Generate world where a single root A feeds two multi-hop downstream branches."""
     rng = random.Random(seed)
     ents = rng.sample(ENTITY_PREFIXES, 8)
     target = f"{ents[0]}_{rng.randint(10, 99)}"
@@ -229,26 +231,47 @@ def generate_shared_root_world(world_id: str, seed: int, depth: int = 2, distrac
     root_facts = [root_a]
     intermediate_facts = []
 
-    # Branch 1 from hub
-    f_branch_1 = f"BRANCH_ALPHA_{world_id}"
-    intermediate_facts.append(f_branch_1)
-    fact_descriptions[f_branch_1] = f"Primary core hub {hub} authorizes sub-protocol Alpha for {prop}."
+    # Branch 1 (Alpha) multi-hop chain from hub
+    nodes_alpha = [f"SECTOR_ALPHA_{ents[2]}_{rng.randint(10, 99)}_{i}" for i in range(depth)]
+    f_b1_root = f"BRANCH_A_0_{world_id}"
+    intermediate_facts.append(f_b1_root)
+    fact_descriptions[f_b1_root] = f"Primary core hub {hub} authorizes initial channel with {nodes_alpha[0]}."
 
-    # Branch 2 from hub
-    f_branch_2 = f"BRANCH_BETA_{world_id}"
-    intermediate_facts.append(f_branch_2)
-    fact_descriptions[f_branch_2] = f"Primary core hub {hub} authorizes sub-protocol Beta for {prop}."
+    for i in range(depth - 1):
+        f_step = f"BRANCH_A_STEP_{i+1}_{world_id}"
+        intermediate_facts.append(f_step)
+        fact_descriptions[f_step] = f"{nodes_alpha[i]} delegates authorization to {nodes_alpha[i+1]}."
+
+    f_auth_a = f"BRANCH_A_AUTH_{world_id}"
+    intermediate_facts.append(f_auth_a)
+    fact_descriptions[f_auth_a] = f"{nodes_alpha[-1]} holds protocol certificate for {prop}."
+
+    # Branch 2 (Beta) multi-hop chain from hub
+    nodes_beta = [f"SECTOR_BETA_{ents[3]}_{rng.randint(10, 99)}_{i}" for i in range(depth)]
+    f_b2_root = f"BRANCH_B_0_{world_id}"
+    intermediate_facts.append(f_b2_root)
+    fact_descriptions[f_b2_root] = f"Primary core hub {hub} authorizes initial channel with {nodes_beta[0]}."
+
+    for i in range(depth - 1):
+        f_step = f"BRANCH_B_STEP_{i+1}_{world_id}"
+        intermediate_facts.append(f_step)
+        fact_descriptions[f_step] = f"{nodes_beta[i]} delegates authorization to {nodes_beta[i+1]}."
+
+    f_auth_b = f"BRANCH_B_AUTH_{world_id}"
+    intermediate_facts.append(f_auth_b)
+    fact_descriptions[f_auth_b] = f"{nodes_beta[-1]} holds protocol certificate for {prop}."
 
     rules = [
-        f"If an entity is anchored to a primary hub AND that hub authorizes sub-protocol Alpha for P, then that entity is P.",
-        f"If an entity is anchored to a primary hub AND that hub authorizes sub-protocol Beta for P, then that entity is P.",
+        f"If an entity is anchored to hub H AND hub H authorizes initial channel with sector S, then that entity is routed to sector S.",
+        f"If an entity is routed to sector X AND sector X delegates authorization to sector Y, then that entity is routed to sector Y.",
+        f"If an entity is routed to sector S AND sector S holds protocol certificate for {prop}, then that entity is {prop}."
     ]
 
     distractor_facts = []
     for z in range(distractors):
         f_dist = f"TELEMETRY_{z+1}_{world_id}"
         distractor_facts.append(f_dist)
-        dist_ent = f"{ents[3]}_{rng.randint(10, 99)}_{z}"
+        dist_ent = f"{ents[4]}_{rng.randint(10, 99)}_{z}"
         fact_descriptions[f_dist] = f"External antenna {dist_ent} is calibrated to frequency {rng.randint(100, 999)} MHz."
 
     return BoundaryWorld(
@@ -267,18 +290,18 @@ def generate_shared_root_world(world_id: str, seed: int, depth: int = 2, distrac
 
 
 def generate_laundered_echo_world(world_id: str, seed: int, distractors: int = 0) -> BoundaryWorld:
-    """Generate lineage laundering world: 3 corroborating reports all descending from 1 unverified root."""
+    """Generate lineage laundering world: explicitly valid primary telemetry log with 3 derivative echoes."""
     rng = random.Random(seed)
     ents = rng.sample(ENTITY_PREFIXES, 8)
     target = f"{ents[0]}_{rng.randint(10, 99)}"
     prop = rng.choice(PROPERTY_NAMES)
 
-    root_raw = f"RAW_FEED_{world_id}"
+    root_primary = f"PRIMARY_LOG_{world_id}"
     observer = f"OBSERVER_{ents[1]}_{rng.randint(10, 99)}"
     fact_descriptions = {
-        root_raw: f"Raw unconfirmed signal log indicates {target} exhibits signature for {prop} via {observer}."
+        root_primary: f"Primary verified telemetry log from {observer} confirms {target} exhibits active signature for {prop}."
     }
-    root_facts = [root_raw]
+    root_facts = [root_primary]
 
     # Three derivative echo reports
     rep_1 = f"REPORT_ALPHA_{world_id}"
@@ -286,13 +309,13 @@ def generate_laundered_echo_world(world_id: str, seed: int, distractors: int = 0
     rep_3 = f"REPORT_GAMMA_{world_id}"
     intermediate_facts = [rep_1, rep_2, rep_3]
 
-    fact_descriptions[rep_1] = f"Bulletin Alpha summarizes the raw signal log from {observer}."
+    fact_descriptions[rep_1] = f"Bulletin Alpha summarizes the primary verified telemetry log from {observer}."
     fact_descriptions[rep_2] = f"Digest Beta republishes the summary from Bulletin Alpha."
-    fact_descriptions[rep_3] = f"Review Gamma transcribes the observation from Digest Beta."
+    fact_descriptions[rep_3] = f"Review Gamma transcribes the record from Digest Beta."
 
     rules = [
-        f"A conclusion of P is valid if and only if supported by an intact, valid primary observation signal log.",
-        f"Derivative bulletins, digests, and summaries are valid only if their originating primary signal log remains valid."
+        f"A conclusion of {prop} is valid if and only if supported by an intact, valid primary verified telemetry log.",
+        f"Derivative bulletins, digests, and summaries are valid only if their originating primary verified telemetry log remains valid."
     ]
 
     distractor_facts = []
@@ -318,11 +341,23 @@ def generate_laundered_echo_world(world_id: str, seed: int, distractors: int = 0
 
 
 # =========================================================================
-# ADVERSARIAL ISOMORPHIC TWIN GENERATOR
+# ADVERSARIAL ISOMORPHIC TWIN GENERATOR (WITH AST CONJUNCTION INVERSION)
 # =========================================================================
 
+def invert_rule_conjunctions(rule_text: str) -> str:
+    """Invert premise conjunction order: 'If A AND B THEN C' -> 'If B AND A THEN C'."""
+    if " AND " in rule_text and "THEN" in rule_text.upper():
+        parts = rule_text.split(", then ", 1)
+        if len(parts) == 2 and " AND " in parts[0] and parts[0].startswith("If "):
+            premises = parts[0][3:].split(" AND ")
+            if len(premises) == 2:
+                inverted_premise = f"If {premises[1]} AND {premises[0]}"
+                return f"{inverted_premise}, then {parts[1]}"
+    return rule_text
+
+
 def generate_adversarial_boundary_twin(world: BoundaryWorld, seed: int) -> BoundaryWorld:
-    """Generate adversarially permuted twin with scrambled IDs, inverted rules, and reordered facts."""
+    """Generate adversarially permuted twin with scrambled IDs, inverted conjunctions, and reordered facts."""
     twin_seed = seed ^ 0x9E3779B9
     rng = random.Random(twin_seed)
 
@@ -351,9 +386,11 @@ def generate_adversarial_boundary_twin(world: BoundaryWorld, seed: int) -> Bound
     rng.shuffle(items)
     shuffled_descriptions = dict(items)
 
+    # Reorder, relabel, and invert conjunctions in rules
     new_rules = []
     for r in world.rules:
         new_r = r.replace(world.target_property, prop).replace("P", prop)
+        new_r = invert_rule_conjunctions(new_r)
         new_rules.append(new_r)
     rng.shuffle(new_rules)
 
@@ -466,7 +503,7 @@ def generate_boundary_trajectory(world: BoundaryWorld) -> BoundaryTrajectory:
     elif world.mode == "LAUNDERED_ECHO":
         raw_root = world.root_facts[0]
         rep_1 = world.intermediate_facts[0]
-        # Retract one derivative report -> Other reports appear to exist, but primary log intact -> ACTIVE
+        # Retract one derivative report -> Other reports and primary log intact -> ACTIVE
         interventions.append(BoundaryIntervention(
             condition_id="c02_cut_echo_report",
             label="Retract one echo report (-Rep1)",
@@ -516,33 +553,34 @@ def generate_boundary_trajectory(world: BoundaryWorld) -> BoundaryTrajectory:
 
 
 def synthesize_boundary_corpus(seed: int = 42) -> list[dict[str, Any]]:
-    """Synthesize structured sweep across Overlap Modes x Depth x Distractors."""
+    """Synthesize structured, balanced sweep across Overlap Modes x Multi-Hop Depth x Distractors."""
     corpus = []
     world_idx = 0
 
-    # 1. Independent multi-depth sweep: d=2, d=3, d=4, d=5
+    # 1. Independent multi-depth sweep: d=2, d=3, d=4, d=5 (2 seeds per depth = 8 worlds)
     for depth in [2, 3, 4, 5]:
-        w_id = f"w_ind_d{depth}_{world_idx:03d}"
-        w = generate_independent_world(w_id, seed=seed + world_idx, depth=depth, distractors=2)
-        twin = generate_adversarial_boundary_twin(w, seed=seed + world_idx)
-        traj_w = generate_boundary_trajectory(w)
-        traj_twin = generate_boundary_trajectory(twin)
-        corpus.append({
-            "world": asdict(w),
-            "twin": asdict(twin),
-            "trajectory": [asdict(t) for t in traj_w.interventions],
-            "twin_trajectory": [asdict(t) for t in traj_twin.interventions],
-            "ground_truth": traj_w.ground_truth_vector,
-            "mode": "INDEPENDENT",
-            "depth": depth,
-        })
-        world_idx += 1
+        for rep in range(2):
+            w_id = f"w_ind_d{depth}_r{rep}_{world_idx:03d}"
+            w = generate_independent_world(w_id, seed=seed + world_idx * 17, depth=depth, distractors=2)
+            twin = generate_adversarial_boundary_twin(w, seed=seed + world_idx * 17)
+            traj_w = generate_boundary_trajectory(w)
+            traj_twin = generate_boundary_trajectory(twin)
+            corpus.append({
+                "world": asdict(w),
+                "twin": asdict(twin),
+                "trajectory": [asdict(t) for t in traj_w.interventions],
+                "twin_trajectory": [asdict(t) for t in traj_twin.interventions],
+                "ground_truth": traj_w.ground_truth_vector,
+                "mode": "INDEPENDENT",
+                "depth": depth,
+            })
+            world_idx += 1
 
-    # 2. Shared Root ancestral overlap: d=2, d=4
+    # 2. Shared Root ancestral overlap: d=2, d=4 (2 worlds)
     for depth in [2, 4]:
         w_id = f"w_shared_d{depth}_{world_idx:03d}"
-        w = generate_shared_root_world(w_id, seed=seed + world_idx, depth=depth, distractors=2)
-        twin = generate_adversarial_boundary_twin(w, seed=seed + world_idx)
+        w = generate_shared_root_world(w_id, seed=seed + world_idx * 17, depth=depth, distractors=2)
+        twin = generate_adversarial_boundary_twin(w, seed=seed + world_idx * 17)
         traj_w = generate_boundary_trajectory(w)
         traj_twin = generate_boundary_trajectory(twin)
         corpus.append({
@@ -556,11 +594,11 @@ def synthesize_boundary_corpus(seed: int = 42) -> list[dict[str, Any]]:
         })
         world_idx += 1
 
-    # 3. Laundered Echo single-origin multiplicity
+    # 3. Laundered Echo single-origin multiplicity (2 worlds)
     for idx in range(2):
-        w_id = f"w_laundered_{world_idx:03d}"
-        w = generate_laundered_echo_world(w_id, seed=seed + world_idx, distractors=2)
-        twin = generate_adversarial_boundary_twin(w, seed=seed + world_idx)
+        w_id = f"w_laundered_r{idx}_{world_idx:03d}"
+        w = generate_laundered_echo_world(w_id, seed=seed + world_idx * 17, distractors=2)
+        twin = generate_adversarial_boundary_twin(w, seed=seed + world_idx * 17)
         traj_w = generate_boundary_trajectory(w)
         traj_twin = generate_boundary_trajectory(twin)
         corpus.append({
