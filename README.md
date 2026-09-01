@@ -1,3 +1,54 @@
+# OXFORD Lite (`oxford-lite`) — Prospective Black-Box Model-Lineage Forensics
+
+> **Status:** `[COMPLETED PROSPECTIVE NATURAL EXPERIMENT / LINEAGE FORENSICS STUDY]` (August 21–22, 2026: ~15+ commits) — Kept Public  
+> **Science Book Status:** `[STUDY: 2026-08-22-oxford-ox-alpha-lineage-attribution]` (Indexed in Science Book Studies)  
+> **Target Specimen:** Anonymous model `ox-alpha` (evaluated August 21–22, 2026)  
+> **Ground-Truth Resolution:** Officially revealed by Z.ai on August 26, 2026 as **GLM-5.3-Flash**  
+> **Portfolio Reference:** [`bigbraintime/projects/oxford-lite-model-forensics.md`](https://github.com/admiralorbiter/bigbraintime)  
+
+---
+
+## Retrospective: Prospective Validation & The GLM-5.3-Flash Reveal
+
+### 1. The Natural Experiment Timeline
+- **August 20, 2026:** Anonymous frontier model `ox-alpha` appears on OpenCode and OpenRouter.
+- **August 21–22, 2026:** *OXFORD Lite* deploys differential tokenization geometry, multimodal probes, and refusal boundaries to conduct blind forensic attribution.
+- **August 22, 2026 (Prediction Frozen):** Concluded `ox-alpha` was a distinct, unreleased Z.ai / GLM-lineage multimodal model (68% internal branch, 16% partner), distinct from public GLM-5.3. Withheld the "GLM-5.3 Flash" naming rumor due to insufficient grounding.
+- **August 26, 2026 (Ground Truth):** Z.ai officially confirms `ox-alpha` was **GLM-5.3-Flash** (320B-parameter MoE, 18B active parameters, first natively multimodal GLM-5 model).
+
+```text
+                  [ THE PROSPECTIVE NATURAL EXPERIMENT ]
+                  
+     UNKNOWN SPECIMEN: "ox-alpha" (August 20, 2026)
+                           │
+                           ▼
+          [ BLIND FORENSIC PROBING (Aug 21-22) ]
+          • Differential tokenization geometry
+          • Multimodal capability tests
+          • Refusal & calibration bounds
+                           │
+                           ▼
+          [ FROZEN PREDICTION (Aug 22) ]
+          • Family: GLM (Z.ai) [P=0.84]
+          • Status: Unreleased multimodal branch
+          • Refused to overclaim "Flash" rumor
+                           │
+                           ▼
+          [ OFFICIAL DISCLOSURE (Aug 26) ]
+          • Ground Truth: GLM-5.3-Flash
+```
+
+### 2. Methodological Findings & Epistemic Calibration
+
+1. **Successful Black-Box Attribution:** Correctly identified Z.ai origin, GLM family, unreleased status, and native multimodality prior to disclosure.
+2. **The Partial Miss (Tokenizer vs. Base-Weight Lineage):** Oxford inferred GLM-5.2 base descent because token-count geometry matched GLM-5.2. In reality, GLM-5.3-Flash was trained from a *new base model* that inherited the GLM tokenizer.
+   $$\mathbf{Tokenizer\ Lineage 
+eq Base-Weight\ Ancestry 
+eq Post-Training\ Genealogy}$$
+3. **Calibrated Epistemic Discipline:** Having the correct rumor available but refusing to promote it without evidence represents sound scientific epistemology (*Justified belief $\gg$ lucky guessing*).
+
+---
+
 # OXFORD Lite
 
 A black-box model-lineage and differential tokenization geometry assay suite for **Ox Alpha**.
